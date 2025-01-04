@@ -5192,6 +5192,7 @@ if ($action == 'create') {
 					print '<td>'.$next_invoice->getNomUrl(1).'</td>';
 					print '<td></td>';
 					print '<td class="center">'.(($next_invoice->type == Facture::TYPE_CREDIT_NOTE) ? $langs->trans('situationInvoiceShortcode_AS') : $langs->trans('situationInvoiceShortcode_S')).$next_invoice->situation_counter.'</td>';
+					print '<td align="center" >'.$next_invoice->computeMarginalProgress().'%</td>';
 					if (isModEnabled("banque")) {
 						print '<td class="right"></td>';
 					}
@@ -5206,7 +5207,6 @@ if ($action == 'create') {
 
 				print '<tr class="oddeven">';
 				print '<td colspan="3" class="right"></td>';
-				print '<td align="center" >'.$next_invoice->computeMarginalProgress().'%</td>';
 				if (isModEnabled("banque")) {
 					print '<td class="right"></td>';
 				}
