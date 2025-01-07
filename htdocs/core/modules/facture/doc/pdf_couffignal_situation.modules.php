@@ -91,7 +91,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->description = "Facture de situation custom";
 
 		$this->type = 'pdf';
-		$formatarray=pdf_getFormat();
+		$formatarray = pdf_getFormat();
 		$this->page_largeur = $formatarray['width'];
 		$this->page_hauteur = $formatarray['height'];
 		$this->format = array($this->page_largeur,$this->page_hauteur);
@@ -99,6 +99,9 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->marge_droite = getDolGlobalInt('MAIN_PDF_MARGIN_RIGHT', 10);
 		$this->marge_haute  = getDolGlobalInt('MAIN_PDF_MARGIN_TOP', 10);
 		$this->marge_basse  = getDolGlobalInt('MAIN_PDF_MARGIN_BOTTOM', 10);
+		$this->heightforfooter = 0; // Defined later, once payments are known
+		$this->heightforfreetext = getDolGlobalInt('MAIN_PDF_FREETEXT_HEIGHT', 5); // Height reserved to output the free text on last page
+		$this->heightforinfotot = $this->marge_basse + 10;	// Height reserved to output the footer (value include bottom margin)
 
 		$this->option_logo = 1;                    // Affiche logo
 		$this->option_tva = 1;                     // Gere option tva FACTURE_TVAOPTION
@@ -114,11 +117,11 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		// Define various properties
 		$this->emetteur=$mysoc;
-		if (empty($this->emetteur->country_code)) $this->emetteur->country_code=substr($langs->defaultlang,-2);    // By default, if was not defined
-		$this->franchise=!$mysoc->tva_assuj;
-		$this->tva=array();
-		$this->localtax1=array();
-		$this->localtax2=array();
+		if (empty($this->emetteur->country_code)) $this->emetteur->country_code = substr($langs->defaultlang,-2);    // By default, if was not defined
+		$this->franchise =! $mysoc->tva_assuj;
+		$this->tva = array();
+		$this->localtax1 = array();
+		$this->localtax2 = array();
 		$this->atleastoneratenotnull = 0;
 		$this->atleastonediscount = false;
 
@@ -341,6 +344,92 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 	/**
+     *  Prepare array with the values per ColName
+     *
+     *  @param		Object Facture		$object				Object to generate
+     *  @param 		int 				$i 					Index of current line 
+     *  @param		Translate			$outputlangs		Lang output object
+     *  @param		int					$hidedetails		Do not show line details
+     *  @return     array         	    					The array resulting, with the values to print
+	 */
+	function get_values_for_line($object, $i, $outputlangs, $hidedetails)
+	{
+		global $user, $langs, $conf, $db;
+
+		/* Get/Compute values */
+		$l = $object->lines[$i];
+		// Price Situation Complete
+		$complete_price = $this->calcul_price_total($l->qty, $l->subprice, $l->remise_percent, $l->tva_tx, $l->localtax1_tx, $l->localtax2_tx, 0, 'HT', $l->info_bits, $l->product_type)[0];
+		// Progress
+		$prev_prog_global = $object->lines[$i]->get_prev_progress($object->id);
+		$cumulated_progress = (float)str_replace('%', '', pdf_getlineprogress($object, $i, $outputlangs, $hidedetails));
+		$marg_prog = $cumulated_progress - $prev_prog_global;
+		// Total price
+		$total_HT = $marg_prog == 0 ? price(0) : pdf_getlinetotalexcltax($object, $i, $outputlangs, $hidedetails);
+		
+		/* Fill Array */    				
+		$values = array(
+			'Designation' => '',
+			/* TODO supprot pictures 'Picture' => array(),*/
+			'VAT' => pdf_getlinevatrate($object, $i, $outputlangs, $hidedetails),
+			'Qty' => pdf_getlineqty($object, $i, $outputlangs, $hidedetails),
+			'PriceUHT' => pdf_getlineupexcltax($object, $i, $outputlangs, $hidedetails),
+			'TotalSituationCompleteHT' => price($complete_price),
+			'AvcmtMarg' => $cumulated_progress - $prev_prog_global,
+			'AvcmtCumulAct' => $cumulated_progress,
+			'AvcmtCumulPrec' => $prev_prog_global,
+			'Reduction' => pdf_getlineremisepercent($object, $i, $outputlangs, $hidedetails),
+			'TotalHT' => $total_HT
+		);
+		if (getDolGlobalInt('PRODUCT_USE_UNITS')) { $values['Unit'] = pdf_getlineunit($object, $i, $outputlangs, $hidedetails, $hookmanager); }
+		// TODO: is the call to Main usefull ?
+
+		/* Manage special lines */
+		// Support lines attributes
+		if (!empty($l->do_not_display_qty)) {$values['Qty'] = '';}
+
+		// TODO Manage this case	if (empty($object->lines[$i]->is_line_paiement)) {$values['Qty'] = '';}
+		
+		// Support modSubtotal lines
+		if (class_exists('TSubtotal')) {
+			if (TSubtotal::isTitle($object->lines[$i]) || TSubtotal::isSubtotal($object->lines[$i])) {	
+				$values = array(
+					'Designation' => '',
+					'Unit' => '',
+					'Picture' => '',
+					'VAT' => '',
+					'Qty' => '',
+					'PriceUHT' => '',
+					'TotalSituationCompleteHT' => '',
+					'AvcmtMarg' => '',
+					'AvcmtCumulAct' => '',
+					'AvcmtCumulPrec' => '',
+					'Reduction' => '',
+					'TotalHT' => '',
+				);
+			}
+			if (TSubtotal::isSubtotal($object->lines[$i])) {
+				$sum = 0;
+				for ($j=1; $j <= $i; $j++) { 
+					// Sum all the values in lines before the current total, until we reach a Title
+					$l = $object->lines[$i-$j];
+					if (TSubtotal::isTitle($l)) { break; }
+					// Compute price an sum it
+					$prev_prog_global = $l->get_prev_progress($object->id);
+					$cumulated_progress = (float)str_replace('%', '', pdf_getlineprogress($object, $i-$j, $outputlangs, $hidedetails));
+					$marg_prog = $cumulated_progress - $prev_prog_global;
+					$total_HT = $marg_prog == 0 ? price(0) : pdf_getlinetotalexcltax($object, $i-$j, $outputlangs, $hidedetails);
+					$sum += (float)str_replace(' ', '', $total_HT);
+				}
+				$values['TotalHT'] = price($sum);
+			}
+		}
+
+		return $values;
+	}
+
+
+	/**
      *  Function to build pdf onto disk
      *
      *  @param		Object		$object				Object to generate
@@ -351,29 +440,27 @@ class pdf_couffignal_situation extends ModelePDFFactures
      *  @param		int			$hideref			Do not show ref
      *  @return     int         	    			1=OK, 0=KO
 	 */
-	function write_file($object,$outputlangs,$srctemplatepath='',$hidedetails=0,$hidedesc=0,$hideref=0)
+	function write_file($object, $outputlangs, $srctemplatepath='', $hidedetails=0, $hidedesc=0, $hideref=0)
 	{
 		global $user,$langs,$conf,$mysoc,$db,$hookmanager;
 
-		if (! is_object($outputlangs)) $outputlangs=$langs;
-		// For backward compatibility with FPDF, force output charset to ISO, because FPDF expect text to be encoded in ISO
-		if (getDolGlobalInt('MAIN_USE_FPDF')) $outputlangs->charset_output='ISO-8859-1';
-
-
-		if (empty($object) || $object->type != Facture::TYPE_SITUATION)
-		{
+		/**** Warning if not situation invoice ****/
+		if (empty($object) || $object->type != Facture::TYPE_SITUATION) {
 			setEventMessage($langs->trans('BtpWarningsObjectIsNotASituation'), 'warnings');
 			return 1;
 		}
 
+		/*** Lang init ***/
+		if (! is_object($outputlangs)) $outputlangs=$langs;
+		// For backward compatibility with FPDF, force output charset to ISO, because FPDF expect text to be encoded in ISO
+		if (getDolGlobalInt('MAIN_USE_FPDF')) $outputlangs->charset_output='ISO-8859-1';
 		$outputlangs->load("main");
 		$outputlangs->load("dict");
 		$outputlangs->load("companies");
 		$outputlangs->load("bills");
 		$outputlangs->load("products");
 
-		$nblignes = count($object->lines);
-
+		/**** Support pictures ****/
 		// Loop on each lines to detect if there is at least one image to show
 		/* TODO: SUpport for pictures 
 		$realpatharray=array();
@@ -403,48 +490,43 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		if (count($realpatharray) == 0) $this->posxpicture=$this->posxtva; */
 
-		if ($conf->facture->dir_output)
-		{
-			$object->fetch_thirdparty();
+		/**** Prepare file ****/
+		if ($conf->facture->dir_output) {
+			/**** Pepare / Init ****/
 
+			// Object init
+			$object->fetch_thirdparty();
 			$deja_regle = $object->getSommePaiement();
 			$amount_credit_notes_included = $object->getSumCreditNotesUsed();
 			$amount_deposits_included = $object->getSumDepositsUsed();
 
 			// Definition of $dir and $file
-			if ($object->specimen)
-			{
+			if ($object->specimen) {
 				$dir = $conf->facture->dir_output;
 				$file = $dir . "/SPECIMEN.pdf";
-			}
-			else
-			{
+			} else {
 				$objectref = dol_sanitizeFileName($object->ref);
 				$dir = $conf->facture->dir_output . "/" . $objectref;
 				$file = $dir . "/" . $objectref . ".pdf";
 			}
-			if (! file_exists($dir))
-			{
-				if (dol_mkdir($dir) < 0)
-				{
+			if (! file_exists($dir)) {
+				if (dol_mkdir($dir) < 0) {
 					$this->error=$langs->transnoentities("ErrorCanNotCreateDir",$dir);
 					return 0;
 				}
 			}
 
 			/* File exists, we create PDF */
-			if (file_exists($dir))
-			{
-				// Add pdfgeneration hook
-				if (! is_object($hookmanager))
-				{
+			if (file_exists($dir)) {
+				// Pdfgeneration hook 
+				if (! is_object($hookmanager)) {
 					include_once DOL_DOCUMENT_ROOT.'/core/class/hookmanager.class.php';
 					$hookmanager=new HookManager($this->db);
 				}
 				$hookmanager->initHooks(array('pdfgeneration'));
-				$parameters=array('file'=>$file,'object'=>$object,'outputlangs'=>$outputlangs);
+				$parameters = array('file' => $file, 'object' => $object, 'outputlangs' => $outputlangs);
 				global $action;
-				$reshook=$hookmanager->executeHooks('beforePDFCreation',$parameters,$object,$action);    // Note that $action and $object may have been modified by some hooks
+				$reshook = $hookmanager->executeHooks('beforePDFCreation', $parameters, $object, $action);    // Note that $action and $object may have been modified by some hooks
 
 				// Set nblignes with the new facture lines content after hook
 				$nblignes = count($object->lines);
@@ -454,65 +536,56 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$pdf=pdf_getInstance($this->format);
                 $default_font_size = pdf_getPDFFontSize($outputlangs);	// Must be after pdf_getInstance
                 $pdf->SetAutoPageBreak(1,0);
-
-                // Footer heights
-                $heightforinfotot = 50+(4*$nbpayments);	// Height reserved to output the info and total part and payment part
-		        $heightforfreetext= getDolGlobalInt('MAIN_PDF_FREETEXT_HEIGHT',5);	// Height reserved to output the free text on last page
-	            $heightforfooter = $this->marge_basse + 10;	// Height reserved to output the footer (value include bottom margin)
-
-                if (class_exists('TCPDF'))
-                {
+                if (class_exists('TCPDF')) {
                     $pdf->setPrintHeader(false);
                     $pdf->setPrintFooter(false);
                 }
-                $pdf->SetFont(pdf_getPDFFont($outputlangs));
+                $pdf->SetFont('', '', $default_font_size);
 
                 // Set path to the background PDF File
-                if (!getDolGlobalInt('MAIN_DISABLE_FPDI') && getDolGlobalInt('MAIN_ADD_PDF_BACKGROUND'))
-                {
+                if (!getDolGlobalInt('MAIN_DISABLE_FPDI') && getDolGlobalInt('MAIN_ADD_PDF_BACKGROUND')) {
 				    $pagecount = $pdf->setSourceFile($conf->mycompany->dir_output.'/' . getDolGlobalString('MAIN_ADD_PDF_BACKGROUND'));
 				    $tplidx = $pdf->importPage(1);
                 }
 
                 // Initialize PDF
 				$pdf->Open();
-				$pagenb=0;
+				$pagenb = 0;
 				$pdf->SetDrawColor(128,128,128);
-
 				$pdf->SetTitle($outputlangs->convToOutputCharset($object->ref));
 				$pdf->SetSubject($outputlangs->transnoentities("Invoice"));
 				$pdf->SetCreator("Dolibarr ".DOL_VERSION);
 				$pdf->SetAuthor($outputlangs->convToOutputCharset($user->getFullName($outputlangs)));
 				$pdf->SetKeyWords($outputlangs->convToOutputCharset($object->ref)." ".$outputlangs->transnoentities("Invoice")." ".$outputlangs->convToOutputCharset($object->thirdparty->name));
 				if (getDolGlobalInt('MAIN_DISABLE_PDF_COMPRESSION')) $pdf->SetCompression(false);
-
 				$pdf->SetMargins($this->marge_gauche, $this->marge_haute, $this->marge_droite);   // Left, Top, Right
-
+				$this->heightforfooter = 50+(4*$nbpayments); // Height reserved to output the info and total part and payment part
 				
-				// New page
+				/*** 1ere Page BTP ***/
+				// Create page and init
 				$pdf->AddPage();
 				if (! empty($tplidx)) $pdf->useTemplate($tplidx);
 				$pagenb++;
-
-				$this->_pagehead($pdf, $object, 1, $outputlangs);
-				$pdf->SetFont('','', $default_font_size - 1);
-				$pdf->MultiCell(0, 3, '');		// Set interline to 3
-				$pdf->SetTextColor(0,0,0);
-
-				/*** 1ere Page BTP ***/
-
 				$tab_top = 90;
 				$tab_top_newpage = (getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD') ? 10: 42);
 				$tab_height = 130;
 				$tab_height_newpage = 150;
 
-				$this->_tableauBtp($pdf, $tab_top, $this->page_hauteur - 90 - $heightforinfotot - $heightforfreetext - $heightforfooter, 0, $outputlangs, 0, 0, $object->multicurrency_code);
-				$bottomlasttab = $this->page_hauteur - $heightforinfotot - $heightforfreetext - $heightforfooter + 1;
-
-				$this->_pagefoot($pdf,$object,$outputlangs,1);
+				// Print head
+				$this->_pagehead($pdf, $object, 1, $outputlangs);
+				$pdf->SetFont('','', $default_font_size - 1);
+				$pdf->MultiCell(0, 3, '');		// Set interline to 3
+				$pdf->SetTextColor(0,0,0);
 				
-				/* UPDATE COUF : Affiche note in 1 page */
-				// Affiche notes
+				// Footer
+				$this->_pagefoot($pdf, $object, $outputlangs, 1);
+				
+				// Recap table
+				$this->_tableauBtp($pdf, $tab_top, $this->page_hauteur - 90 - $this->heightforinfotot - $this->heightforfreetext - $this->heightforfooter, 0, $outputlangs, 0, 0, $object->multicurrency_code);
+				$bottomlasttab = $this->page_hauteur - $this->heightforinfotot - $this->heightforfreetext - $this->heightforfooter + 1;
+				
+
+				// Notes
 				$tab_top = $bottomlasttab - 56 ;
 				$notetoshow = empty($object->note_public) ? '' : $object->note_public;
 				if (getDolGlobalInt('MAIN_ADD_SALE_REP_SIGNATURE_IN_NOTE')) {
@@ -549,7 +622,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$pagenb++;
 				$this->page_largeur = 297;
 				$this->page_hauteur = 210;
-				$pdf->setPageOrientation('L', 1, $heightforfooter+$heightforfreetext+$heightforinfotot);
+				$pdf->setPageOrientation('L', 1, $this->heightforfooter+$this->heightforfreetext+$this->heightforinfotot);
 
 				// Initialize new page
 				$this->_pagehead($pdf, $object, 0, $outputlangs, FALSE);
@@ -581,318 +654,34 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					}
 				}
 
-				/** Product table **/
-				// Initialize position tracking variables
-				$curY = $tab_top + 9;
-				$nexY = $curY;
-
-				$hidetop = 0; // TODO Manage this
-
-				// Loop on each lines
-				$this->compute_columns_size(); // Refresh columns infos
-				for ($i = 0; $i < $nblignes; $i++) {
-					$curX = $this->columns[0]['Start'];
-					$pdf->SetFont('','', $default_font_size - 1);   // Into loop to work with multipage
-					$pdf->SetTextColor(0,0,0);
-					$pageposbefore=$pdf->getPage();
-
-					$showpricebeforepagebreak=1;
-					$posYAfterImage=0;
-					$posYAfterDescription=0;
-
-					/* TODO Support pictures
-					// Define size of image if we need it
-					$imglinesize=array();
-					if (! empty($realpatharray[$i])) $imglinesize=pdf_getSizeForImage($realpatharray[$i]);
-
-					$pdf->setTopMargin($tab_top_newpage);
-					$pdf->setPageOrientation('L', 1, $heightforfooter+$heightforfreetext+$heightforinfotot);	// The only function to edit the bottom margin of current page to set it.
-
-
-					// We start with Photo of product line
-					if (isset($imglinesize['width']) && isset($imglinesize['height']) && ($curY + $imglinesize['height']) > ($this->page_hauteur-($heightforfooter+$heightforfreetext+$heightforinfotot)))	// If photo too high, we moved completely on new page
-					{
-						$pdf->AddPage('','',true);
-						if (! empty($tplidx)) $pdf->useTemplate($tplidx);
-						if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
-						$pdf->setPage($pageposbefore+1);
-
-						$curY = $tab_top_newpage;
-						$showpricebeforepagebreak=0;
-					}
-
-					if (isset($imglinesize['width']) && isset($imglinesize['height']))
-					{
-						$curX = $this->posxpicture-1;
-						$pdf->Image($realpatharray[$i], $curX + (($this->posxtva-$this->posxpicture-$imglinesize['width'])/2), $curY, $imglinesize['width'], $imglinesize['height'], '', '', '', 2, 300);	// Use 300 dpi
-						// $pdf->Image does not increase value return by getY, so we save it manually
-						$posYAfterImage=$curY+$imglinesize['height'];
-					}
-					*/
-
-					/** Description**/
-					// Support for bold lines
-					if(!empty($object->lines[$i]->is_bold) && $object->lines[$i]->is_bold) {
-						$pdf->SetTextColor(0,0,60);
-						$pdf->SetFont('', 'B', $default_font_size - 1);
-					}
-
-					/** TODO : Rewrite the control condition in combined ifs to be clearer **/
-					// Trick values for Subtotal lines
-					$pdf->page_largeur = $this->page_largeur;
-					$pdf->marge_droite = $this->marge_droite;
-					foreach ($this->columns as $col) {
-						if ($col['ColName'] == 'TotalHT') {
-							$pdf->postotalht = $col['Start'];
-							break;
-						}
-					}
-					$pdf->postotalht = $this->page_largeur-$this->marge_droite-$this->marge_gauche;
-
-					// Try to write, testing if pagebreak
-					$pdf->startTransaction();
-
-					$this->custom_pdf_writelinedesc($pdf, $object, $i, $outputlangs, $this->columns[0]['Width'], 3, $curX, $curY, $hideref, $hidedesc);
-					$pageposafter = $pdf->getPage();
-					if ($pageposafter > $pageposbefore)	{ // There is a pagebreak
-						// Rollback and add a page
-						$pdf->rollbackTransaction(true);
-						$pdf->setPageOrientation('L', 1, $heightforfooter);	// The only function to edit the bottom margin of current page to set it. TODO: Can we get rid on this and the next one ?
-						// And write again
-						$this->custom_pdf_writelinedesc($pdf,$object,$i,$outputlangs,$this->columns[0]['Width'],3,$curX,$curY,$hideref,$hidedesc);
-						$pageposafter = $pdf->getPage();
-						$posyafter = $pdf->GetY();
-
-						// We will check space for table total & bottom free text
-						if ($posyafter > ($this->page_hauteur - ($heightforfooter+$heightforfreetext+$heightforinfotot))) {
-							// There is no space left for total+free text
-							if ($i == ($nblignes-1)) { // No more lines, and no space left to show total, so we create a new page
-								$pdf->AddPage('','',true);
-								if (!empty($tplidx)) $pdf->useTemplate($tplidx);
-								if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
-							}
-						}
-						else {
-							// We found a page break
-							$showpricebeforepagebreak=0;
-						}
-					}// else { // No pagebreak
-					$pdf->commitTransaction();
-					//}
-
-					// As page may have changed
-					$nexY = $pdf->GetY();
-					$pdf->setPage($pageposbefore);
-					$pdf->setTopMargin($this->marge_haute);
-					$pdf->setPageOrientation('L', 1, 0);	// The only function to edit the bottom margin of current page to set it.
-
-					// We suppose that a too long description or photo were moved completely on next page
-					if ($pageposafter > $pageposbefore && empty($showpricebeforepagebreak)) {
-						$pdf->setPage($pageposafter); 
-						$curY = $tab_top_newpage;
-					}
-
-
-					/** Write all columns values **/
-					// Drop Description
-					unset($this->columns[0]);
-
-					// Prepare array with the values per ColName
-					// Price Situation Complete
-					$l = $object->lines[$i];
-					$complete_price = $this->calcul_price_total($l->qty, $l->subprice, $l->remise_percent, $l->tva_tx, $l->localtax1_tx, $l->localtax2_tx, 0, 'HT', $l->info_bits, $l->product_type)[0];
-					// Progress
-					$prev_prog_global = $object->lines[$i]->get_prev_progress($object->id);
-    				$cumulated_progress = (float)str_replace('%', '', pdf_getlineprogress($object, $i, $outputlangs, $hidedetails));
-    				$marg_prog = $cumulated_progress - $prev_prog_global;
-					// Total price
-    				$total_HT = $marg_prog == 0 ? price(0) : pdf_getlinetotalexcltax($object, $i, $outputlangs, $hidedetails);
-					// Array    				
-					$values = array(
-						'Designation' => '',
-						/* TODO supprot pictures 'Picture' => array(),*/
-						'VAT' => pdf_getlinevatrate($object, $i, $outputlangs, $hidedetails),
-						'Qty' => pdf_getlineqty($object, $i, $outputlangs, $hidedetails),
-						'PriceUHT' => pdf_getlineupexcltax($object, $i, $outputlangs, $hidedetails),
-						'TotalSituationCompleteHT' => price($complete_price),
-						'AvcmtMarg' => $cumulated_progress - $prev_prog_global,
-						'AvcmtCumulAct' => $cumulated_progress,
-						'AvcmtCumulPrec' => $prev_prog_global,
-						'Reduction' => pdf_getlineremisepercent($object, $i, $outputlangs, $hidedetails),
-						'TotalHT' => $total_HT
-					);
-					if (getDolGlobalInt('PRODUCT_USE_UNITS')) { $values['Unit'] = pdf_getlineunit($object, $i, $outputlangs, $hidedetails, $hookmanager); }
-					// TODO: is the call to Main usefull ?
-
-
-					// Support lines attributes
-					if (!empty($object->lines[$i]->do_not_display_qty)) {$values['Qty'] = '';}
-
-					// TODO Manage this case	if (empty($object->lines[$i]->is_line_paiement)) {$values['Qty'] = '';}
-					
-					// Support modSubtotal lines
-					if (class_exists('TSubtotal')) {
-						if (TSubtotal::isTitle($object->lines[$i]) || TSubtotal::isSubtotal($object->lines[$i])) {	
-							$values = array(
-								'Designation' => '',
-								'Unit' => '',
-								'Picture' => '',
-								'VAT' => '',
-								'Qty' => '',
-								'PriceUHT' => '',
-								'TotalSituationCompleteHT' => '',
-								'AvcmtMarg' => '',
-								'AvcmtCumulAct' => '',
-								'AvcmtCumulPrec' => '',
-								'Reduction' => '',
-								'TotalHT' => '',
-							);
-						}
-						if (TSubtotal::isSubtotal($object->lines[$i])) {
-							$sum = 0;
-							for ($j=1; $j <= $i; $j++) { 
-								// Sum all the values in lines before the current total, until we reach a Title
-								$l = $object->lines[$i-$j];
-								if (TSubtotal::isTitle($l)) { break; }
-								// Compute price an sum it
-								$prev_prog_global = $l->get_prev_progress($object->id);
-			    				$cumulated_progress = (float)str_replace('%', '', pdf_getlineprogress($object, $i-$j, $outputlangs, $hidedetails));
-			    				$marg_prog = $cumulated_progress - $prev_prog_global;
-			    				$total_HT = $marg_prog == 0 ? price(0) : pdf_getlinetotalexcltax($object, $i-$j, $outputlangs, $hidedetails);
-			    				print 'XXX'.(float)str_replace(' ', '', $total_HT);
-			    				$sum += (float)str_replace(' ', '', $total_HT);
-							}
-							$values['TotalHT'] = price($sum);
-						}
-					}
-
-					// Write in columns
-					$pdf->SetFont('','', $default_font_size - 1);
-					foreach ($this->columns as $col) {
-						$pdf->SetXY($col['Start'] + 0.5, $curY);
-						$txt = $values[$col['ColName']];
-						if ($txt != '') { $txt .= $col['PostText'];}
-						$pdf->MultiCell($col['Width'] - 1, 3, $txt, 0, $col['TextAlign']);
-					}
-
-
-					$sign=1;
-					if (isset($object->type) && $object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $sign=-1;
-					// Collecte des totaux par valeur de tva dans $this->tva["taux"]=total_tva
-					$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
-					if ($prev_progress > 0) { // Compute progress from previous situation
-						if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-						else $tvaligne = $sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-					} else {
-						if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne= $sign * $object->lines[$i]->multicurrency_total_tva;
-						else $tvaligne= $sign * $object->lines[$i]->total_tva;
-					}
-
-					$localtax1ligne=$object->lines[$i]->total_localtax1;
-					$localtax2ligne=$object->lines[$i]->total_localtax2;
-					$localtax1_rate=$object->lines[$i]->localtax1_tx;
-					$localtax2_rate=$object->lines[$i]->localtax2_tx;
-					$localtax1_type=$object->lines[$i]->localtax1_type;
-					$localtax2_type=$object->lines[$i]->localtax2_type;
-
-					if ($object->remise_percent) $tvaligne-=($tvaligne*$object->remise_percent)/100;
-					if ($object->remise_percent) $localtax1ligne-=($localtax1ligne*$object->remise_percent)/100;
-					if ($object->remise_percent) $localtax2ligne-=($localtax2ligne*$object->remise_percent)/100;
-
-					$vatrate=(string) $object->lines[$i]->tva_tx;
-
-					// Retrieve type from database for backward compatibility with old records
-					if ((! isset($localtax1_type) || $localtax1_type=='' || ! isset($localtax2_type) || $localtax2_type=='') // if tax type not defined
-					&& (! empty($localtax1_rate) || ! empty($localtax2_rate))) // and there is local tax
-					{
-						$localtaxtmp_array=getLocalTaxesFromRate($vatrate,0, $object->thirdparty, $mysoc);
-						$localtax1_type = $localtaxtmp_array[0];
-						$localtax2_type = $localtaxtmp_array[2];
-					}
-
-					// retrieve global local tax
-					if ($localtax1_type && $localtax1ligne != 0)
-						$this->localtax1[$localtax1_type][$localtax1_rate]+=$localtax1ligne;
-					if ($localtax2_type && $localtax2ligne != 0)
-						$this->localtax2[$localtax2_type][$localtax2_rate]+=$localtax2ligne;
-
-					if (($object->lines[$i]->info_bits & 0x01) == 0x01) $vatrate.='*';
-					if (! isset($this->tva[$vatrate])) 				$this->tva[$vatrate]=0.0;
-					if($tvaligne > 0.0) $this->tva[$vatrate] += $tvaligne;
-
-					if ($posYAfterImage > $posYAfterDescription) $nexY=$posYAfterImage;
-
-					// Add line
-					if (getDolGlobalInt('MAIN_PDF_DASH_BETWEEN_LINES') && $i < ($nblignes - 1))
-					{
-						$pdf->setPage($pageposafter);
-						$pdf->SetLineStyle(array('dash'=>'1,1','color' => array(80, 80, 80)));
-						$pdf->line($this->marge_gauche, $nexY+1, $this->page_largeur - $this->marge_droite, $nexY+1);
-						$pdf->SetLineStyle(array('dash'=>0));
-					}
-
-					$nexY += 2;    // Passe espace entre les lignes
-
-					/* Grid for all pages but the last one */
-					while ($pagenb < $pageposafter)	{
-						$pdf->setPage($pagenb);
-						if ($pagenb == 2) {
-							$this->_tableau($pdf, $tab_top, $this->page_hauteur - $tab_top - $heightforfooter, 0, $outputlangs, 0, 1, $object->multicurrency_code);
-						} else {
-							$this->_tableau($pdf, $tab_top_newpage - 5, $this->page_hauteur - $tab_top_newpage - $heightforfooter + 5, 0, $outputlangs, $hidetop, 1, $object->multicurrency_code);
-						}
-						$this->_pagefoot($pdf,$object,$outputlangs,1);
-						$pagenb++;
-						$pdf->setPage($pagenb);
-						$pdf->setPageOrientation('L', 1, 0);	// The only function to edit the bottom margin of current page to set it.
-						if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
-					}
-					if (isset($object->lines[$i+1]->pagebreak) && $object->lines[$i+1]->pagebreak) {
-						if ($pagenb == 2) {
-							$this->_tableau($pdf, $tab_top, $this->page_hauteur - $tab_top - $heightforfooter, 0, $outputlangs, 0, 1, $object->multicurrency_code);
-						}
-						$this->_pagefoot($pdf,$object,$outputlangs,1);
-						// New page
-						$pdf->AddPage();
-						if (! empty($tplidx)) $pdf->useTemplate($tplidx);
-						$pagenb++;
-						if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
-					}
-
-					$curY = $nexY;
-				}
-
-				/*** Grid ***/
-				/* Grid for last page */
-				$this->_tableau($pdf, $tab_top, $this->page_hauteur - $tab_top - $heightforinfotot - $heightforfreetext - $heightforfooter, 0, $outputlangs, 0, 0, $object->multicurrency_code);
-				$bottomlasttab=$this->page_hauteur - $heightforinfotot - $heightforfreetext - $heightforfooter + 1;
+				// Main table
+				$this->_main_table($pdf, $object, $bottomlasttab, $outputlangs, $tab_top, $pagenb);
 				
 				// Affiche zone infos
-				$posy=$this->_tableau_info($pdf, $object, $bottomlasttab, $outputlangs);
+				$posy = $this->_tableau_info($pdf, $object, $bottomlasttab, $outputlangs);
 
 				// Affiche zone totaux
-				$posy=$this->_tableau_tot($pdf, $object, $deja_regle, $bottomlasttab, $outputlangs);
+				$posy = $this->_tableau_tot($pdf, $object, $deja_regle, $bottomlasttab, $outputlangs);
 
 				// Affiche zone versements
-				if ($deja_regle || $amount_credit_notes_included || $amount_deposits_included)
-				{
+				if ($deja_regle || $amount_credit_notes_included || $amount_deposits_included) {
 					$posy = $this->setNewPage($posy, $pdf, $object, $outputlangs,170);
 					$posy=$this->_tableau_versements($pdf, $object, $posy, $outputlangs);
 				}
 
-				// Pied de page
+				// Footer
 				$this->_pagefoot($pdf,$object,$outputlangs);
 				if (method_exists($pdf,'AliasNbPages')) $pdf->AliasNbPages();
 
+				// Close and generate
 				$pdf->Close();
-
 				$pdf->Output($file,'F');
 
 				// Add pdfgeneration hook
 				$hookmanager->initHooks(array('pdfgeneration'));
-				$parameters=array('file'=>$file,'object'=>$object,'outputlangs'=>$outputlangs);
+				$parameters = array('file' => $file, 'object' => $object, 'outputlangs' => $outputlangs);
 				global $action;
-				$reshook=$hookmanager->executeHooks('afterPDFCreation',$parameters,$this,$action);    // Note that $action and $object may have been modified by some hooks
+				$reshook = $hookmanager->executeHooks('afterPDFCreation', $parameters, $this, $action);    // Note that $action and $object may have been modified by some hooks
 
 				if (!empty(getDolGlobalString('MAIN_UMASK')))
 				@chmod($file, octdec(getDolGlobalString('MAIN_UMASK')));
@@ -901,16 +690,15 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			else
 			{
 				$this->error=$langs->transnoentities("ErrorCanNotCreateDir",$dir);
-				return 0;
+				return 0; 
 			}
 		}
-		else
-		{
-			$this->error=$langs->transnoentities("ErrorConstantNotDefined","FAC_OUTPUTDIR");
+		else {
+			$this->error = $langs->transnoentities("ErrorConstantNotDefined","FAC_OUTPUTDIR");
 			return 0;
 		}
-		$this->error=$langs->transnoentities("ErrorUnknown");
-
+		
+		$this->error = $langs->transnoentities("ErrorUnknown");
 		return 0;   // Erreur par defaut
 	}
 
@@ -1211,6 +999,242 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		return $posy;
 	}
 
+	/**
+	 *	Show main detailed lines
+	 *
+	 *	@param	PDF			$pdf            (ref) Object PDF
+	 *	@param  Facture		$object         Object invoice
+	 *	@param	Translate	$outputlangs	Objet langs
+	 *  @param	int			$tab_top		Top position y of the table
+	 *  @param	int			$bottomlasttab	(ref) Bottom position y of the lasttable
+	 *  @param	int			$pagenb			(ref) Nb of pages
+	 * 
+	 *	@return int							OK=1; NOK=0
+	 */
+	function _main_table(&$pdf, $object, &$bottomlasttab, $outputlangs, $tab_top, &$pagenb) {
+		// Initialize position tracking variables
+		$curY = $tab_top + 9;
+		$nexY = $curY;
+		$nblignes = count($object->lines);
+		$hidetop = 0; // TODO Manage this
+
+		$default_font_size = pdf_getPDFFontSize($outputlangs);
+
+		// Loop on each lines
+		$this->compute_columns_size(); // Refresh columns infos
+		for ($i = 0; $i < $nblignes; $i++) {
+			/***** Initialize for line *****/
+			$curX = $this->columns[0]['Start'];
+			$pdf->SetFont('','', $default_font_size - 1);   // Into loop to work with multipage
+			$pdf->SetTextColor(0, 0, 0);
+			$pageposbefore = $pdf->getPage();
+			$showpricebeforepagebreak = 1;
+			$posYAfterImage = 0;
+			$posYAfterDescription = 0;
+
+
+			/***** Pictures *****/
+			/* TODO Support pictures
+			// Define size of image if we need it
+			$imglinesize=array();
+			if (! empty($realpatharray[$i])) $imglinesize=pdf_getSizeForImage($realpatharray[$i]);
+
+			$pdf->setTopMargin($tab_top_newpage);
+			$pdf->setPageOrientation('L', 1, $this->heightforfooter+$this->heightforfreetext+$this->heightforinfotot);	// The only function to edit the bottom margin of current page to set it.
+
+
+			// We start with Photo of product line
+			if (isset($imglinesize['width']) && isset($imglinesize['height']) && ($curY + $imglinesize['height']) > ($this->page_hauteur-($this->heightforfooter+$this->heightforfreetext+$this->heightforinfotot)))	// If photo too high, we moved completely on new page
+			{
+				$pdf->AddPage('','',true);
+				if (! empty($tplidx)) $pdf->useTemplate($tplidx);
+				if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
+				$pdf->setPage($pageposbefore+1);
+
+				$curY = $tab_top_newpage;
+				$showpricebeforepagebreak=0;
+			}
+
+			if (isset($imglinesize['width']) && isset($imglinesize['height']))
+			{
+				$curX = $this->posxpicture-1;
+				$pdf->Image($realpatharray[$i], $curX + (($this->posxtva-$this->posxpicture-$imglinesize['width'])/2), $curY, $imglinesize['width'], $imglinesize['height'], '', '', '', 2, 300);	// Use 300 dpi
+				// $pdf->Image does not increase value return by getY, so we save it manually
+				$posYAfterImage=$curY+$imglinesize['height'];
+			}
+			*/
+
+
+			/***** Description *****/
+			// Support for bold lines
+			if(!empty($object->lines[$i]->is_bold) && $object->lines[$i]->is_bold) {
+				$pdf->SetTextColor(0,0,60);
+				$pdf->SetFont('', 'B', $default_font_size - 1);
+			}
+
+			// Trick values for Subtotal lines
+			$pdf->page_largeur = $this->page_largeur;
+			$pdf->marge_droite = $this->marge_droite;
+			foreach ($this->columns as $col) {
+				if ($col['ColName'] == 'TotalHT') {
+					$pdf->postotalht = $col['Start'];
+					break;
+				}
+			}
+			$pdf->postotalht = $this->page_largeur-$this->marge_droite-$this->marge_gauche;
+
+			// Try to write, testing if pagebreak
+			$pdf->startTransaction();
+			$this->custom_pdf_writelinedesc($pdf, $object, $i, $outputlangs, $this->columns[0]['Width'], 3, $curX, $curY, $hideref, $hidedesc);
+			$pageposafter = $pdf->getPage();
+			/** TODO : Rewrite the control condition in combined ifs to be clearer **/
+			if ($pageposafter > $pageposbefore)	{ // There is a pagebreak
+				// Rollback and add a page
+				$pdf->rollbackTransaction(true);
+				$pdf->setPageOrientation('L', 1, $this->heightforfooter);	// The only function to edit the bottom margin of current page to set it. TODO: Can we get rid on this and the next one ?
+				// And write again
+				$this->custom_pdf_writelinedesc($pdf,$object,$i,$outputlangs,$this->columns[0]['Width'],3,$curX,$curY,$hideref,$hidedesc);
+				$pageposafter = $pdf->getPage();
+				$posyafter = $pdf->GetY();
+
+				// We will check space for table total & bottom free text
+				if ($posyafter > ($this->page_hauteur - ($this->heightforfooter+$this->heightforfreetext+$this->heightforinfotot))) {
+					// There is no space left for total+free text
+					if ($i == ($nblignes-1)) { // No more lines, and no space left to show total, so we create a new page
+						$pdf->AddPage('','',true);
+						if (!empty($tplidx)) $pdf->useTemplate($tplidx);
+						if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
+					}
+				}
+				else {
+					// We found a page break
+					$showpricebeforepagebreak=0;
+				}
+			}
+			$pdf->commitTransaction();
+
+			// As page may have changed
+			$nexY = $pdf->GetY();
+			$pdf->setPage($pageposbefore);
+			$pdf->setTopMargin($this->marge_haute);
+			$pdf->setPageOrientation('L', 1, 0);	// The only function to edit the bottom margin of current page to set it.
+
+			// We suppose that a too long description or photo were moved completely on next page
+			if ($pageposafter > $pageposbefore && empty($showpricebeforepagebreak)) {
+				$pdf->setPage($pageposafter); 
+				$curY = $tab_top_newpage;
+			}
+
+
+			/***** Write all columns values *****/
+			// Drop Description
+			unset($this->columns[0]);
+			// Get values
+			$values = $this->get_values_for_line($object, $i, $outputlangs, $hidedetails);
+			// Print
+			$pdf->SetFont('','', $default_font_size - 1);
+			foreach ($this->columns as $col) {
+				$pdf->SetXY($col['Start'] + 0.5, $curY);
+				$txt = $values[$col['ColName']];
+				if ($txt != '') { $txt .= $col['PostText'];}
+				$pdf->MultiCell($col['Width'] - 1, 3, $txt, 0, $col['TextAlign']);
+			}
+
+
+			/***** Manage taxes *****/
+			// TODO sign in $this
+			$sign=1;
+			if (isset($object->type) && $object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $sign=-1;
+			// Collecte des totaux par valeur de tva dans $this->tva["taux"]=total_tva
+			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
+			if ($prev_progress > 0) { // Compute progress from previous situation
+				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
+				else $tvaligne = $sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
+			} else {
+				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $sign * $object->lines[$i]->multicurrency_total_tva;
+				else $tvaligne = $sign * $object->lines[$i]->total_tva;
+			}
+
+			$localtax1ligne=$object->lines[$i]->total_localtax1;
+			$localtax2ligne=$object->lines[$i]->total_localtax2;
+			$localtax1_rate=$object->lines[$i]->localtax1_tx;
+			$localtax2_rate=$object->lines[$i]->localtax2_tx;
+			$localtax1_type=$object->lines[$i]->localtax1_type;
+			$localtax2_type=$object->lines[$i]->localtax2_type;
+
+			if ($object->remise_percent) {
+				$tvaligne -= ($tvaligne*$object->remise_percent)/100;
+				$localtax1ligne -= ($localtax1ligne*$object->remise_percent)/100;
+				$localtax2ligne -= ($localtax2ligne*$object->remise_percent)/100;
+			}
+
+			$vatrate=(string) $object->lines[$i]->tva_tx;
+
+			// Retrieve type from database for backward compatibility with old records
+			if ((! isset($localtax1_type) || $localtax1_type=='' || ! isset($localtax2_type) || $localtax2_type=='') // if tax type not defined
+			&& (! empty($localtax1_rate) || ! empty($localtax2_rate))) { // and there is local tax 
+				$localtaxtmp_array=getLocalTaxesFromRate($vatrate,0, $object->thirdparty, $mysoc);
+				$localtax1_type = $localtaxtmp_array[0];
+				$localtax2_type = $localtaxtmp_array[2];
+			}
+
+			// Retrieve global local tax
+			if ($localtax1_type && $localtax1ligne != 0) $this->localtax1[$localtax1_type][$localtax1_rate]+=$localtax1ligne;
+			if ($localtax2_type && $localtax2ligne != 0) $this->localtax2[$localtax2_type][$localtax2_rate]+=$localtax2ligne;
+
+			if (($object->lines[$i]->info_bits & 0x01) == 0x01) $vatrate .= '*';
+			if (! isset($this->tva[$vatrate])) 	$this->tva[$vatrate] = 0.0;
+			if ($tvaligne > 0.0) $this->tva[$vatrate] += $tvaligne;
+
+			// Update the position
+			if ($posYAfterImage > $posYAfterDescription) $nexY = $posYAfterImage;
+
+
+			/***** Add intern dashed line *****/
+			if (getDolGlobalInt('MAIN_PDF_DASH_BETWEEN_LINES') && $i < ($nblignes - 1))
+			{
+				$pdf->setPage($pageposafter);
+				$pdf->SetLineStyle(array('dash'=>'1,1','color' => array(80, 80, 80)));
+				$pdf->line($this->marge_gauche, $nexY + 1, $this->page_largeur - $this->marge_droite, $nexY + 1);
+				$pdf->SetLineStyle(array('dash'=>0));
+			}
+			$nexY += 2;    // Passe espace entre les lignes
+
+
+			/***** Grid for all pages but the last one *****/
+			while ($pagenb < $pageposafter)	{
+				$pdf->setPage($pagenb);
+				if ($pagenb == 2) {
+					$this->_grid_and_title($pdf, $tab_top, $this->page_hauteur - $tab_top - $this->heightforfooter, 0, $outputlangs, 0, 1, $object->multicurrency_code);
+				} else {
+					$this->_grid_and_title($pdf, $tab_top_newpage - 5, $this->page_hauteur - $tab_top_newpage - $this->heightforfooter + 5, 0, $outputlangs, $hidetop, 1, $object->multicurrency_code);
+				}
+				$this->_pagefoot($pdf,$object,$outputlangs,1);
+				$pagenb++;
+				$pdf->setPage($pagenb);
+				$pdf->setPageOrientation('L', 1, 0);	// The only function to edit the bottom margin of current page to set it.
+				if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
+			}
+			if (isset($object->lines[$i+1]->pagebreak) && $object->lines[$i+1]->pagebreak) {
+				if ($pagenb == 2) {
+					$this->_grid_and_title($pdf, $tab_top, $this->page_hauteur - $tab_top - $this->heightforfooter, 0, $outputlangs, 0, 1, $object->multicurrency_code);
+				}
+				$this->_pagefoot($pdf,$object,$outputlangs,1);
+				// New page
+				$pdf->AddPage();
+				if (! empty($tplidx)) $pdf->useTemplate($tplidx);
+				$pagenb++;
+				if (!getDolGlobalInt('MAIN_PDF_DONOTREPEAT_HEAD')) $this->_pagehead($pdf, $object, 0, $outputlangs);
+			}
+
+			$curY = $nexY;
+		}
+
+		/*** Grid ***/
+		/* Grid for last page */
+		$this->_grid_and_title($pdf, $tab_top, $this->page_hauteur - $tab_top - $this->heightforinfotot - $this->heightforfreetext - $this->heightforfooter, 0, $outputlangs, 0, 0, $object->multicurrency_code);
+		$bottomlasttab = $this->page_hauteur - $this->heightforinfotot - $this->heightforfreetext - $this->heightforfooter + 1;
+	}
 
 	/**
 	 *	Show total to pay
@@ -1632,7 +1656,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	 *   @param		string		$currency		Currency code
 	 *   @return	void
 	 */
-	function _tableau(&$pdf, $tab_top, $tab_height, $nexY, $outputlangs, $hidetop=0, $hidebottom=0, $currency='')
+	function _grid_and_title(&$pdf, $tab_top, $tab_height, $nexY, $outputlangs, $hidetop=0, $hidebottom=0, $currency='')
 	{
 		// TODO: Support getDolGlobalInt('MAIN_DOCUMENTS_WITH_PICTURE_WIDTH', 20)
 		// Support bold.
