@@ -124,6 +124,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->localtax2 = array();
 		$this->atleastoneratenotnull = 0;
 		$this->atleastonediscount = false;
+		$this->sign = (isset($object->type) && $object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) ? -1 : 1;
 
 		// Access Data Situation
 		if (!empty($object)) $this->TDataSituation = $this->_getDataSituation($object);
@@ -419,7 +420,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					$cumulated_progress = (float)str_replace('%', '', pdf_getlineprogress($object, $i-$j, $outputlangs, $hidedetails));
 					$marg_prog = $cumulated_progress - $prev_prog_global;
 					$total_HT = $marg_prog == 0 ? price(0) : pdf_getlinetotalexcltax($object, $i-$j, $outputlangs, $hidedetails);
-					$sum += (float)str_replace(' ', '', $total_HT);
+					$sum += price2num($total_HT);
 				}
 				$values['TotalHT'] = price($sum);
 			}
@@ -590,8 +591,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$notetoshow = empty($object->note_public) ? '' : $object->note_public;
 				if (getDolGlobalInt('MAIN_ADD_SALE_REP_SIGNATURE_IN_NOTE')) {
 					// Get first sale rep
-					if (is_object($object->thirdparty))
-					{
+					if (is_object($object->thirdparty)) {
 						$salereparray = $object->thirdparty->getSalesRepresentatives($user);
 						$salerepobj = new User($this->db);
 						$salerepobj->fetch($salereparray[0]['id']);
@@ -670,7 +670,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				}
 
 				// Footer
-				$this->_pagefoot($pdf,$object,$outputlangs);
+				$this->_pagefoot($pdf, $object, $outputlangs);
 				if (method_exists($pdf,'AliasNbPages')) $pdf->AliasNbPages();
 
 				// Close and generate
@@ -716,8 +716,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	{
 		global $conf;
 
-        $sign=1;
-        if ($object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $sign=-1;
+        $this->sign=1;
+        if ($object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $this->sign=-1;
 
         $tab3_posx = 120;
 		$tab3_top = $posy + 8;
@@ -821,7 +821,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$pdf->SetXY($tab3_posx, $tab3_top+$y);
 				$pdf->MultiCell(20, 3, dol_print_date($this->db->jdate($row->date),'day',false,$outputlangs,true), 0, 'L', 0);
 				$pdf->SetXY($tab3_posx+21, $tab3_top+$y);
-				$pdf->MultiCell(20, 3, price($sign * $row->amount, 0, $outputlangs), 0, 'L', 0);
+				$pdf->MultiCell(20, 3, price($this->sign * $row->amount, 0, $outputlangs), 0, 'L', 0);
 				$pdf->SetXY($tab3_posx+40, $tab3_top+$y);
 				$oper = $outputlangs->transnoentitiesnoconv("PaymentTypeShort" . $row->code);
 
@@ -1016,7 +1016,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$curY = $tab_top + 9;
 		$nexY = $curY;
 		$nblignes = count($object->lines);
-		$hidetop = 0; // TODO Manage this
+		$hidetop = 0;
 
 		$default_font_size = pdf_getPDFFontSize($outputlangs);
 
@@ -1142,17 +1142,14 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 			/***** Manage taxes *****/
-			// TODO sign in $this
-			$sign=1;
-			if (isset($object->type) && $object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $sign=-1;
 			// Collecte des totaux par valeur de tva dans $this->tva["taux"]=total_tva
 			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
 			if ($prev_progress > 0) { // Compute progress from previous situation
-				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-				else $tvaligne = $sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
+				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
+				else $tvaligne = $this->sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
 			} else {
-				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $sign * $object->lines[$i]->multicurrency_total_tva;
-				else $tvaligne = $sign * $object->lines[$i]->total_tva;
+				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva;
+				else $tvaligne = $this->sign * $object->lines[$i]->total_tva;
 			}
 
 			$localtax1ligne=$object->lines[$i]->total_localtax1;
@@ -1250,8 +1247,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	{
 		global $conf,$mysoc;
 
-        $sign=1;
-        if ($object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $sign=-1;
+        $this->sign=1;
+        if ($object->type == 2 && getDolGlobalInt('INVOICE_POSITIVE_CREDIT_NOTE')) $this->sign=-1;
 
         $default_font_size = pdf_getPDFFontSize($outputlangs);
 
@@ -1261,52 +1258,44 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		// Tableau total
 		$col1x = 120; $col2x = 170;
-		if ($this->page_largeur < 210) // To work with US executive format
-		{
-			$col2x-=20;
-		}
+		if ($this->page_largeur < 210) {$col2x-=20;}// To work with US executive format
 		$largcol2 = ($this->page_largeur - $this->marge_droite - $col2x);
 
-		$useborder=0;
-		$index = 0;
+		$useborder = 0;
 
-		// pourcentage global d'avancement
+		// Pourcentage global d'avancement
 		$totalFacture = 0;
 		$totalAvancement = 0;
-		$i=0;
-		foreach ($object->lines as $line)
-		{
+		// TODO AMA -- Remplacer avec un appel au global progress over invoice.
+		foreach ($object->lines as $line) {
 		    if(!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line)){
 				$divider = $line->situation_percent > 0 ? $line->situation_percent / 100  : 1;
 		        $totalFacture += $line->total_ht /  $divider;
 		        $totalAvancement+=$line->total_ht;
 		    }
 		}
-
-		if(!empty($totalFacture)) $avancementGlobal = $totalAvancement / $totalFacture * 100;
+		if (!empty($totalFacture)) $avancementGlobal = $totalAvancement / $totalFacture * 100;
 		else $avancementGlobal = 0;
-		//var_dump($avancementGlobal);exit;
+
+		// Get previous situation
 		if (empty($object->tab_previous_situation_invoice)) $object->fetchPreviousNextSituationInvoice();
 		$TPreviousInvoice = $object->tab_previous_situation_invoice;
 
+		// Compute amount to be paid
 		$total_a_payer = 0;
 		foreach ($TPreviousInvoice as &$fac) {
 		    $total_a_payer += $fac->total_ht;
 		}
-
 		$total_a_payer += $object->total_ht;
 
 		if (empty($avancementGlobal)) {
 		    $total_a_payer = 0;
-		}
-		else {
+		} else {
 		    $total_a_payer = $total_a_payer * 100 / $avancementGlobal;
 		}
 
 		$deja_paye = 0;
-		$i = 1;
 		if(!empty($TPreviousInvoice)){
-
 		    $pdf->setY($tab2_top);
 		    $posy = $pdf->GetY();
 
@@ -1321,37 +1310,30 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		    $posy += $tab2_hl;
 
-		    foreach ($TPreviousInvoice as &$fac){
+			$last_invoice = end($TPreviousInvoice);
+			$deja_paye += $last_invoice->total_ht;
+			$posy = $this->setNewPage($posy, $pdf, $object, $outputlangs, 180);
 
+			// Cumul TVA précédent
+			$pdf->SetFillColor(255,255,255);
+			$pdf->SetXY($col1x, $posy);
+			$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("PDFCrabeBtpTitle", $last_invoice->situation_counter).' '.$outputlangs->transnoentities("TotalHTCum"), 0, 'L', 1);
 
-				$posy = $this->setNewPage($posy, $pdf, $object, $outputlangs,180);
+			$pdf->SetXY($col2x,$posy);
+			$total_cumulated = $last_invoice->total_ht;
+			foreach ($TPreviousInvoice as $prev_invoice) {
+				$total_cumulated += $prev_invoice->total_ht;
+			}
+			$pdf->MultiCell($largcol2, $tab2_hl, ' - '.price($total_cumulated, 0, $outputlangs), 0, 'R', 1);
 
-		        // cumul TVA précédent
-		        $index++;
-		        $pdf->SetFillColor(255,255,255);
-		        $pdf->SetXY($col1x, $posy);
-		        $pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("PDFCrabeBtpTitle", $i).' '.$outputlangs->transnoentities("TotalHT"), 0, 'L', 1);
-
-		        $pdf->SetXY($col2x,$posy);
-		        $pdf->MultiCell($largcol2, $tab2_hl, ' - '.price($fac->total_ht, 0, $outputlangs), 0, 'R', 1);
-
-		        $i++;
-		        $deja_paye += $fac->total_ht;
-		        $posy += $tab2_hl;
-
-		        $pdf->setY($posy);
-
-		    }
-
+			$posy += $tab2_hl;
+			$pdf->setY($posy);
 			$posy = $this->setNewPage($posy,  $pdf, $object, $outputlangs);
-
 		    $tab2_top = $posy;
-		    $index=0;
-
 		}
 
 		// Total HT
-		$index++;
+		$index = 1;
 		$posy += $tab2_hl;
 		$tab2_top = $this->setNewPage($posy, $pdf, $object, $outputlangs);
 		$pdf->SetFillColor(255,255,255);
@@ -1360,7 +1342,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		$total_ht = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1 ? $object->multicurrency_total_ht : $object->total_ht);
 		$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-		$pdf->MultiCell($largcol2, $tab2_hl, price($sign * ($total_ht + (! empty($object->remise)?$object->remise:0)), 0, $outputlangs), 0, 'R', 1);
+		$pdf->MultiCell($largcol2, $tab2_hl, price($this->sign * ($total_ht + (! empty($object->remise)?$object->remise:0)), 0, $outputlangs), 0, 'R', 1);
 
 		// Show VAT by rates and total
 		$pdf->SetFillColor(248,248,248);
@@ -1549,7 +1531,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("RevenueStamp"), $useborder, 'L', 1);
 
 					$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-					$pdf->MultiCell($largcol2, $tab2_hl, price($sign * $object->revenuestamp), $useborder, 'R', 1);
+					$pdf->MultiCell($largcol2, $tab2_hl, price($this->sign * $object->revenuestamp), $useborder, 'R', 1);
 				}
 
 				// Total TTC
@@ -1562,7 +1544,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 				$total_ttc = (isModEnabled('multicurrency') && $object->multiccurency_tx != 1) ? $object->multicurrency_total_ttc : $object->total_ttc;
 				$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-				$pdf->MultiCell($largcol2, $tab2_hl, price($sign * $total_ttc, 0, $outputlangs), $useborder, 'R', 1);
+				$pdf->MultiCell($largcol2, $tab2_hl, price($this->sign * $total_ttc, 0, $outputlangs), $useborder, 'R', 1);
 
 				if($object->type == Facture::TYPE_SITUATION)
 				{
@@ -1721,9 +1703,10 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		global $conf, $object;
 
 		// TODO à mettre dans le construct
-		$this->posx_new_cumul = 94;
-		$this->posx_cumul_anterieur = 130;
-		$this->posx_month = 166;
+		$this->posx_new_cumul = 95;
+		$col_width = 35;
+		$this->posx_cumul_anterieur = $this->posx_new_cumul + $col_width;
+		$this->posx_month = $this->posx_cumul_anterieur + $col_width;
 
 		$tab_height -= 29; // Réduction de la hauteur global du tableau
 
@@ -1746,8 +1729,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$pdf->SetFont('','', $default_font_size - 2);
 		
 
-		if (empty($hidetop))
-		{
+		if (empty($hidetop)) {
 			$titre = $outputlangs->transnoentities("AmountInCurrency",$outputlangs->transnoentitiesnoconv("Currency".$currency));
 			$pdf->SetXY($this->page_largeur - $this->marge_droite - ($pdf->GetStringWidth($titre) + 3), $tab_top-4);
 			$pdf->MultiCell(($pdf->GetStringWidth($titre) + 3), 2, $titre);
@@ -1755,8 +1737,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$width = $this->page_largeur-$this->marge_gauche-$this->marge_droite-83;
 
 			//$conf->global->MAIN_PDF_TITLE_BACKGROUND_COLOR='230,230,230';
-			if (getDolGlobalString('MAIN_PDF_TITLE_BACKGROUND_COLOR'))
-			{
+			if (getDolGlobalString('MAIN_PDF_TITLE_BACKGROUND_COLOR')) 			{
 				$pdf->Rect($this->posx_new_cumul-1, $tab_top, $width, 5, 'F', null, explode(',',getDolGlobalString('MAIN_PDF_TITLE_BACKGROUND_COLOR')));
 				$pdf->Rect($this->marge_gauche, $tab_top+92.5, $this->page_largeur-$this->marge_gauche-$this->marge_droite, 5, 'F', null, explode(',',getDolGlobalString('MAIN_PDF_TITLE_BACKGROUND_COLOR')));
 			}
@@ -1806,12 +1787,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$pdf->SetXY($this->marge_gauche+2, $tab_top+8);
 		$pdf->MultiCell(80,2, $outputlangs->transnoentities("Travaux"),'','L');
 
-		/* COUF UPDATE
-		$pdf->SetXY($this->marge_gauche+2, $tab_top+12);
-		$pdf->MultiCell(80,2, $outputlangs->transnoentities("BtpAdditionalWork"),'','L');
-		
-		!! All tab-top has been reduced by 8, and text aligned to left
-		*/
 
 		$pdf->SetXY($this->marge_gauche+2, $tab_top+20);
 		$pdf->MultiCell(80,2, $outputlangs->transnoentities("TotalHT"),'','L');
@@ -1824,11 +1799,11 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 		$pdf->SetFont('','B', $default_font_size - 1);
-		$pdf->SetXY($this->marge_gauche+2, $tab_top+39);
+		$pdf->SetXY($this->marge_gauche+2, $tab_top+38);
 		$pdf->MultiCell(80,2, $outputlangs->transnoentities("BtpTotalSituationTTC"),'','C');
 		$pdf->SetFont('','', $default_font_size - 2);
 		// COUF UPDATE
-		$pdf->SetXY($this->marge_gauche+2, $tab_top+43);
+		$pdf->SetXY($this->marge_gauche+2, $tab_top+42);
 		$pdf->MultiCell(80,2, '('.$outputlangs->transnoentities("SituationInvoiceProgressColTitle").')','','C');
 
 		/***********************************************************/
@@ -1846,33 +1821,36 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			)
 		);
 
-		$x = $this->marge_gauche+95;
-		foreach($TToDpisplay as $Tab) {
+		// Position variables
+		$padding = 18;
+		$x = $this->posx_new_cumul + $padding / 2;
+		$inner_width = $col_width - $padding;
 
+		foreach($TToDpisplay as $Tab) {
 			$pdf->SetXY($x, $tab_top+8);
-			$pdf->MultiCell(80,2, price($this->TDataSituation[$Tab[0]]),'','L');
+			$pdf->MultiCell($inner_width, 2, price($this->TDataSituation[$Tab[0]]),'','R');
 
 			/*!! Following tab-top has been reduced by 8*/
 
 			$pdf->SetXY($x, $tab_top+20);
-			$pdf->MultiCell(80,2, price($this->TDataSituation[$Tab[1]]),'','L');
+			$pdf->MultiCell($inner_width, 2, price($this->TDataSituation[$Tab[1]]),'','R');
 
 			$pdf->SetXY($x, $tab_top+24);
-			$pdf->MultiCell(80,2, price($this->TDataSituation[$Tab[2]]),'','L');
+			$pdf->MultiCell($inner_width, 2, price($this->TDataSituation[$Tab[2]]),'','R');
 
 			$pdf->SetXY($x, $tab_top+28);
-			$pdf->MultiCell(80,2, price($this->TDataSituation[$Tab[3]]),'','L');
+			$pdf->MultiCell($inner_width, 2, price($this->TDataSituation[$Tab[3]]),'','R');
 
 
 			$pdf->SetFont('','B', $default_font_size - 1);
-			$pdf->SetXY($x, $tab_top+39);
-			$pdf->MultiCell(80,2, price($this->TDataSituation[$Tab[4]]),'','L');
+			$pdf->SetXY($x, $tab_top+38);
+			$pdf->MultiCell($inner_width, 2, price($this->TDataSituation[$Tab[4]]),'','R');
 			$pdf->SetFont('','', $default_font_size - 2);
 			// COUF UPDATE
-			$pdf->SetXY($x, $tab_top+43);
-			$pdf->MultiCell(80,2, '('.$this->TDataSituation[$Tab[5]] . '%)','','L');
+			$pdf->SetXY($x, $tab_top+42);
+			$pdf->MultiCell($inner_width, 2, '('.$this->TDataSituation[$Tab[5]] . '%)','','C');
 
-			$x += 38;
+			$x += $col_width;
 
 		}
 		/************************************************************/
@@ -1931,47 +1909,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		return $TDataSituation;
 
 	}
-
-/* COUF UPDATE  No longer used
-	function _getInfosLineDerniereSituation(&$object, &$current_line)
-	{
-		if (empty($object->situation_cycle_ref) || $object->situation_counter <= 1) return;
-
-		$facDerniereSituation = &$this->TDataSituation['derniere_situation'];
-		//var_dump($current_line);exit;
-		// On cherche la ligne précédente de la ligne sur laquelle on se trouve :
-		$subtotal_ht = 0;
-		foreach($facDerniereSituation->lines as $l) {
-			if ($l->special_code == 9) continue;
-			$subtotal_ht += $l->total_ht;
-			if(class_exists('TSubtotal') && TSubtotal::isSubtotal($l)){
-			    $l->total_ht = $subtotal_ht;
-			    $subtotal_ht = 0;
-			}
-
-			if($l->rowid == $current_line->fk_prev_id) {
-
-				// Récupération du total_ht sans prendre en compte la progression (pour la colonne "sommes")
-				$tabprice = $this->calcul_price_total($l->qty, $l->subprice, $l->remise_percent, $l->tva_tx, $l->localtax1_tx, $l->localtax2_tx, 0, 'HT', $l->info_bits, $l->product_type);
-				$total_ht  = $tabprice[0];
-				$total_tva = $tabprice[1];
-				$total_ttc = $tabprice[2];
-				$total_localtax1 = $tabprice[9];
-				$total_localtax2 = $tabprice[10];
-				$pu_ht = $tabprice[3];
-				//var_dump($tabprice);
-				return array(
-								'progress_prec'=>$l->situation_percent
-								,'total_ht_without_progress'=>$total_ht
-				                ,'total_ht'=>$l->total_ht
-							);
-
-			}
-
-		}
-	}
-
-	*/
 
 	function calcul_price_total($qty, $pu, $remise_percent_ligne, $txtva, $uselocaltax1_rate, $uselocaltax2_rate, $remise_percent_global, $price_base_type, $info_bits, $type, $seller = '',$localtaxes_array='')
 	{
@@ -2501,7 +2438,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	function _pagefoot(&$pdf, $object, $outputlangs, $hidefreetext=0)
 	{
 		global $conf;
-		$showdetails=getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS');
+		$showdetails = getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS');
 		return pdf_pagefoot($pdf,$outputlangs,'INVOICE_FREE_TEXT',$this->emetteur,$this->marge_basse,$this->marge_gauche,$this->page_hauteur,$object,$showdetails,$hidefreetext);
 	}
 
