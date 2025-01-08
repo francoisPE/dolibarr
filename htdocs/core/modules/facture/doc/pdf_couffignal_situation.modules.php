@@ -357,7 +357,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	{
 		global $user, $langs, $conf, $db;
 
-		/* Get/Compute values */
+		/* Get Compute values */
 		$l = $object->lines[$i];
 		// Price Situation Complete
 		$complete_price = $this->calcul_price_total($l->qty, $l->subprice, $l->remise_percent, $l->tva_tx, $l->localtax1_tx, $l->localtax2_tx, 0, 'HT', $l->info_bits, $l->product_type)[0];
