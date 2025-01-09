@@ -587,6 +587,7 @@ class pdf_sansprix extends ModelePDFSuppliersOrders
 						$nexY = max($pdf->GetY(), $nexY);
 					}
 
+					/*
 					// Unit price before discount
 					if ($this->getColumnStatus('subprice')) {
 						$up_excl_tax = pdf_getlineupexcltax($object, $i, $outputlangs, $hidedetails);
@@ -1235,14 +1236,14 @@ class pdf_sansprix extends ModelePDFSuppliersOrders
 
 		$pdf->SetFont('', 'B', $default_font_size + 3);
 		$pdf->SetXY($posx, $posy);
-		$pdf->SetTextColor(0, 0, 60);
+		$pdf->SetTextColor(0, 0, 80);
 		$title = $outputlangs->transnoentities("SupplierOrder")." ".$outputlangs->convToOutputCharset($object->ref);
 		if ($object->status == $object::STATUS_DRAFT) {
 			$pdf->SetTextColor(128, 0, 0);
 			$title .= ' - '.$outputlangs->transnoentities("NotValidated");
 		}
 		$pdf->MultiCell($w, 3, $title, '', 'R');
-		$posy += 1;
+		$posy += 2;
 
 		if ($object->ref_supplier) {
 			$posy += 4;
@@ -1258,7 +1259,7 @@ class pdf_sansprix extends ModelePDFSuppliersOrders
 		if (getDolGlobalString('PDF_SHOW_PROJECT_TITLE')) {
 			$object->fetch_projet();
 			if (!empty($object->project->ref)) {
-				$posy += 3;
+				$posy += 4;
 				$pdf->SetXY($posx, $posy);
 				$pdf->SetTextColor(0, 0, 60);
 				$pdf->MultiCell($w, 3, $outputlangs->transnoentities("Project")." : ".(empty($object->project->title) ? '' : $object->project->title), '', 'R');
