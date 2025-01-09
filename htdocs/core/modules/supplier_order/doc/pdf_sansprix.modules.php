@@ -580,14 +580,13 @@ class pdf_sansprix extends ModelePDFSuppliersOrders
 
 					$pdf->SetFont('', '', $default_font_size - 1); // On repositionne la police par defaut
 
-					// VAT Rate
+					/*// VAT Rate
 					if ($this->getColumnStatus('vat')) {
 						$vat_rate = pdf_getlinevatrate($object, $i, $outputlangs, $hidedetails);
 						$this->printStdColumnContent($pdf, $curY, 'vat', $vat_rate);
 						$nexY = max($pdf->GetY(), $nexY);
 					}
 
-					/*
 					// Unit price before discount
 					if ($this->getColumnStatus('subprice')) {
 						$up_excl_tax = pdf_getlineupexcltax($object, $i, $outputlangs, $hidedetails);
