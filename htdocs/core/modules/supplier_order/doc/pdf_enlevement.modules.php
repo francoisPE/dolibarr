@@ -1276,7 +1276,7 @@ class pdf_enlevement extends ModelePDFSuppliersOrders
 			}
 		}
 
-		$pdf->SetFont('', 'B', $default_font_size + 3);
+		// Title
 		$pdf->SetXY($posx, $posy);
 		$pdf->SetTextColor(0, 0, 60);
 		$title = $outputlangs->transnoentities("PDFProductWithdrawalFrom")." ".date('d/m/Y');
@@ -1286,6 +1286,13 @@ class pdf_enlevement extends ModelePDFSuppliersOrders
 		}*/
 		$pdf->MultiCell($w, 3, $title, '', 'R');
 		$posy += 3;
+
+		// Ref commande
+		$posy += 4;
+		$pdf->SetFont('', '', $default_font_size - 1);
+		$pdf->SetXY($posx, $posy);
+		$pdf->SetTextColor(0, 0, 60);
+		$pdf->MultiCell($w, 3, $outputlangs->transnoentities("OurSupplierOrder")." : ".$outputlangs->convToOutputCharset($object->ref), '', 'R');
 
 		if ($object->ref_supplier) {
 			$posy += 4;

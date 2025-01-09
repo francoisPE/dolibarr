@@ -349,6 +349,13 @@ class pdf_sansprix extends ModelePDFSuppliersOrders
 					$notetoshow = dol_concatdesc($notetoshow, $extranote);
 				}
 
+				// Show sender
+				$pdf->SetTextColor(0, 0, 0);
+				$pdf->SetFont('', 'B', $default_font_size);
+				$pdf->SetXY($this->marge_droite, $tab_top - 5);
+				$pdf->MultiCell($this->page_largeur - $this->marge_gauche - $this->marge_droite, 3, $outputlangs->transnoentities("SentBy")." : ".$outputlangs->convToOutputCharset($user->getFullName($outputlangs)), 0, 'L');
+				$tab_top = $tab_top + 5;
+
 				$pagenb = $pdf->getPage();
 				if ($notetoshow) {
 					$tab_width = $this->page_largeur - $this->marge_gauche - $this->marge_droite;
