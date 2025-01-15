@@ -101,7 +101,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->margin_bottom  = getDolGlobalInt('MAIN_PDF_MARGIN_BOTTOM', 10);
 		$this->heightforfooter = 0; // Defined later, once payments are known
 		$this->heightforfreetext = getDolGlobalInt('MAIN_PDF_FREETEXT_HEIGHT', 5); // Height reserved to output the free text on last page
-		$this->heightforinfotot = $this->margin_bottom + 15;	// Height reserved to output the footer (value include bottom margin)
+		$this->heightforinfotot = $this->margin_bottom + 20;	// Height reserved to output the footer (value include bottom margin)
 
 		$this->option_logo = 1;                    // Affiche logo
 		$this->option_tva = 1;                     // Gere option tva FACTURE_TVAOPTION
@@ -1427,57 +1427,62 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		if ($object->paye) $resteapayer=0;
 
 		print "XXX" . $object->prorata_discount;
-		if ($deja_regle > 0 || $creditnoteamount > 0 || $depositsamount > 0 || $object->prorata_discount > 0) {
-			// Already paid + Deposits
+		// Already paid + Deposits
+		if ($deja_regle > 0) {
 			$index++;
 			$tab2_top = $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
 			$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("Paid"), 0, 'L', 0);
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($largcol2, $tab2_hl, price($deja_regle + $depositsamount, 0, $outputlangs), 0, 'R', 0);
+		}
 
-			// Credit note
-			if ($creditnoteamount) {
-				$index++;
-				$tab2_top = $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
-				$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
-				$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("CreditNotes"), 0, 'L', 0);
-				$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-				$pdf->MultiCell($largcol2, $tab2_hl, price($creditnoteamount, 0, $outputlangs), 0, 'R', 0);
-			}
-
-			// Escompte
-			if ($object->close_code == Facture::CLOSECODE_DISCOUNTVAT) {
-				$index++;
-				$pdf->SetFillColor(255,255,255);
-				$tab2_top =  $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
-				$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
-				$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("EscompteOfferedShort"), $useborder, 'L', 1);
-				$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-				$pdf->MultiCell($largcol2, $tab2_hl, price($object->total_ttc - $deja_regle - $creditnoteamount - $depositsamount, 0, $outputlangs), $useborder, 'R', 1);
-
-				$resteapayer=0;
-			}
-			
-			// Retenue de prorata
+		// Credit note
+		if ($creditnoteamount) {
 			$index++;
 			$tab2_top = $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
 			$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
-			$pdf->SetTextColor(0,0,60);
+			$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("CreditNotes"), 0, 'L', 0);
+			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
+			$pdf->MultiCell($largcol2, $tab2_hl, price($creditnoteamount, 0, $outputlangs), 0, 'R', 0);
+		}
+
+		// Escompte
+		if ($object->close_code == Facture::CLOSECODE_DISCOUNTVAT) {
+			$index++;
+			$pdf->SetFillColor(255,255,255);
+			$tab2_top =  $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
+			$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
+			$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("EscompteOfferedShort"), $useborder, 'L', 1);
+			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
+			$pdf->MultiCell($largcol2, $tab2_hl, price($object->total_ttc - $deja_regle - $creditnoteamount - $depositsamount, 0, $outputlangs), $useborder, 'R', 1);
+
+			$resteapayer=0;
+		}
+			
+		// Retenue de prorata
+		if ($object->prorata_discount > 0) {
+			$index++;
+			$tab2_top = $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
+			$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
+			$pdf->SetTextColor(0,0,0);
+			$pdf->SetFillColor(255,255,255);
 			$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("ProrataRetain"), $useborder, 'L', 1);
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-			$pdf->MultiCell($largcol2, $tab2_hl, price(-$this->sign * $object->prorata_discount, 0, $outputlangs), $useborder, 'R', 1);
+			$pdf->MultiCell($largcol2, $tab2_hl, price(round(-$this->sign * $object->prorata_discount, 2), 0, $outputlangs), $useborder, 'R', 1);
 			$resteapayer -= $object->prorata_discount;
+		}
 
+		if ($deja_regle > 0 || $creditnoteamount > 0 || $depositsamount > 0 || $object->prorata_discount > 0) {
 			// To pay
 			$index++;
-			$pdf->SetTextColor(0,0,60);
-			$pdf->SetFillColor(224,224,224);
+			$pdf->SetTextColor(0, 0, 60);
+			$pdf->SetFillColor(224, 224, 224);
 			$tab2_top = $this->setNewPage($tab2_top,$pdf, $object, $outputlangs,164);
 			$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("RemainderToPay"), $useborder, 'L', 1);
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
-			$pdf->MultiCell($largcol2, $tab2_hl, price($resteapayer, 0, $outputlangs), $useborder, 'R', 1);
+			$pdf->MultiCell($largcol2, $tab2_hl, price(round($resteapayer, 2), 0, $outputlangs), $useborder, 'R', 1);
 
 			$pdf->SetFont('','', $default_font_size - 1);
 			$pdf->SetTextColor(0,0,0);
