@@ -57,7 +57,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	var $margin_left;
 	var	$margin_right;
 	var	$marge_haute;
-	var	$marge_basse;
+	var	$margin_bottom;
 
 	var $emetteur;	// Objet societe qui emet
 
@@ -98,10 +98,10 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->margin_left = getDolGlobalInt('MAIN_PDF_MARGIN_LEFT', 10);
 		$this->margin_right = getDolGlobalInt('MAIN_PDF_MARGIN_RIGHT', 10);
 		$this->marge_haute  = getDolGlobalInt('MAIN_PDF_MARGIN_TOP', 10);
-		$this->marge_basse  = getDolGlobalInt('MAIN_PDF_MARGIN_BOTTOM', 10);
+		$this->margin_bottom  = getDolGlobalInt('MAIN_PDF_MARGIN_BOTTOM', 10);
 		$this->heightforfooter = 0; // Defined later, once payments are known
 		$this->heightforfreetext = getDolGlobalInt('MAIN_PDF_FREETEXT_HEIGHT', 5); // Height reserved to output the free text on last page
-		$this->heightforinfotot = $this->marge_basse + 15;	// Height reserved to output the footer (value include bottom margin)
+		$this->heightforinfotot = $this->margin_bottom + 15;	// Height reserved to output the footer (value include bottom margin)
 
 		$this->option_logo = 1;                    // Affiche logo
 		$this->option_tva = 1;                     // Gere option tva FACTURE_TVAOPTION
@@ -1643,7 +1643,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		// Output Rect
 		// KEEPTHIS => Affiche les bords extérieurs
-		$this->printRectBtp($pdf,$this->margin_left, $tab_top, $this->page_width-$this->margin_left-$this->margin_right, $tab_height, $hidetop, $hidebottom);	// Rect prend une longueur en 3eme param et 4eme param
+		$this->printRectBtp($pdf,$this->margin_left, $tab_top, $this->page_width - $this->margin_left - $this->margin_right, $tab_height, $hidetop, $hidebottom);	// Rect prend une longueur en 3eme param et 4eme param
 
 		// PRINT COLUMNS TITLES
 		$pdf->line($this->posx_new_cumul-1, $tab_top, $this->posx_new_cumul-1, $tab_top + $tab_height);
@@ -2316,11 +2316,11 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	 *      @param	int			$hidefreetext		1=Hide free text
 	 *      @return	int								Return height of bottom margin including footer text
 	 */
-	function _pagefoot(&$pdf, $object, $outputlangs, $hidefreetext=0)
+	function _pagefoot(&$pdf, $object, $outputlangs, $hidefreetext = 0)
 	{
 		global $conf;
 		$showdetails = getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS');
-		return pdf_pagefoot($pdf,$outputlangs,'INVOICE_FREE_TEXT',$this->emetteur,$this->marge_basse,$this->margin_left,$this->page_height,$object,$showdetails,$hidefreetext);
+		return pdf_pagefoot($pdf, $outputlangs, 'INVOICE_FREE_TEXT', $this->emetteur, $this->margin_bottom, $this->margin_left, $this->page_height, $object, $showdetails, $hidefreetext);
 	}
 
 
@@ -2336,9 +2336,9 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	 * @param	int		$hidebottom		Hide bottom
 	 * @return	void
 	 */
-    function printRectBtp($pdf, $x, $y, $l, $h, $hidetop=0, $hidebottom=0)
+    function printRectBtp($pdf, $x, $y, $l, $h, $hidetop = 0, $hidebottom = 0)
     {
-	    if (empty($hidetop) || $hidetop==-1) $pdf->line($x, $y, $x+$l, $y);
+	    if (empty($hidetop) || $hidetop == -1) $pdf->line($x, $y, $x+$l, $y);
 	    $pdf->line($x+$l, $y, $x+$l, $y+$h);
 	    if (empty($hidebottom)) $pdf->line($x+$l, $y+$h, $x, $y+$h);
 	    $pdf->line($x, $y+$h, $x, $y);
