@@ -2492,7 +2492,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line)) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
 				// Compute the line price if progress is 100%
 				$totalIfCompleted += ($line->qty * $line->subprice) * (100 - $line->remise_percent) / 100 ;
 			}
@@ -2541,7 +2541,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line)) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
 				// Compute the line price if progress is 100%
 				$totalAvancement += $line->total_ht;
 			}
