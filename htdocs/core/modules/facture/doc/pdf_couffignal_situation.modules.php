@@ -351,7 +351,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	 */
 	function get_values_for_line($object, $i, $outputlangs, $hidedetails = 0)
 	{
-		global $user, $langs, $conf, $db;
+		global $user, $langs, $conf, $db, $hookmanager;
 
 		/* Get Compute values */
 		$l = $object->lines[$i];
@@ -981,6 +981,54 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$tab_height_in_page = array();
 
 		for ($i = 0; $i < $nblignes; $i++) {
+			/***** Manage taxes *****/
+			// Collecte des totaux par valeur de tva dans $this->tva["taux"]=total_tva
+			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
+			if ($prev_progress > 0) { // Compute progress from previous situation
+				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
+				else $tvaligne = $this->sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
+			} else {
+				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva;
+				else $tvaligne = $this->sign * $object->lines[$i]->total_tva;
+			}
+
+			$localtax1ligne = $object->lines[$i]->total_localtax1;
+			$localtax2ligne = $object->lines[$i]->total_localtax2;
+			$localtax1_rate = $object->lines[$i]->localtax1_tx;
+			$localtax2_rate = $object->lines[$i]->localtax2_tx;
+			$localtax1_type = $object->lines[$i]->localtax1_type;
+			$localtax2_type = $object->lines[$i]->localtax2_type;
+
+			if ($object->remise_percent) {
+				$tvaligne -= ($tvaligne*$object->remise_percent)/100;
+				$localtax1ligne -= ($localtax1ligne*$object->remise_percent)/100;
+				$localtax2ligne -= ($localtax2ligne*$object->remise_percent)/100;
+			}
+
+			$vatrate=(string) $object->lines[$i]->tva_tx;
+
+			// Retrieve type from database for backward compatibility with old records
+			if ((! isset($localtax1_type) || $localtax1_type=='' || ! isset($localtax2_type) || $localtax2_type=='') // if tax type not defined
+			&& (! empty($localtax1_rate) || ! empty($localtax2_rate))) { // and there is local tax 
+				$localtaxtmp_array=getLocalTaxesFromRate($vatrate,0, $object->thirdparty, $mysoc);
+				$localtax1_type = $localtaxtmp_array[0];
+				$localtax2_type = $localtaxtmp_array[2];
+			}
+
+			// Retrieve global local tax
+			if ($localtax1_type && $localtax1ligne != 0) $this->localtax1[$localtax1_type][$localtax1_rate]+=$localtax1ligne;
+			if ($localtax2_type && $localtax2ligne != 0) $this->localtax2[$localtax2_type][$localtax2_rate]+=$localtax2ligne;
+
+			if (($object->lines[$i]->info_bits & 0x01) == 0x01) $vatrate .= '*';
+			if (!isset($this->tva[$vatrate])) 	$this->tva[$vatrate] = 0.0;
+			$this->tva[$vatrate] += $tvaligne;
+
+			/**** Support for special endlines (internal) ****/
+			if ($object->lines[$i]->special_code == 10050172) {
+				// Only ensure proper VAT management
+				continue;
+			}
+
 			/***** Initialize for line *****/
 			$curX = $this->columns[0]['Start'];
 			$pdf->SetFont('','', $default_font_size - 1);   // Into loop to work with multipage
@@ -1047,49 +1095,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				if ($txt != '') { $txt .= $col['PostText'];}
 				$pdf->MultiCell($col['Width'] - 1, 3, $txt, 0, $col['TextAlign']);
 			}
-
-
-			/***** Manage taxes *****/
-			// Collecte des totaux par valeur de tva dans $this->tva["taux"]=total_tva
-			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
-			if ($prev_progress > 0) { // Compute progress from previous situation
-				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-				else $tvaligne = $this->sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-			} else {
-				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva;
-				else $tvaligne = $this->sign * $object->lines[$i]->total_tva;
-			}
-
-			$localtax1ligne = $object->lines[$i]->total_localtax1;
-			$localtax2ligne = $object->lines[$i]->total_localtax2;
-			$localtax1_rate = $object->lines[$i]->localtax1_tx;
-			$localtax2_rate = $object->lines[$i]->localtax2_tx;
-			$localtax1_type = $object->lines[$i]->localtax1_type;
-			$localtax2_type = $object->lines[$i]->localtax2_type;
-
-			if ($object->remise_percent) {
-				$tvaligne -= ($tvaligne*$object->remise_percent)/100;
-				$localtax1ligne -= ($localtax1ligne*$object->remise_percent)/100;
-				$localtax2ligne -= ($localtax2ligne*$object->remise_percent)/100;
-			}
-
-			$vatrate=(string) $object->lines[$i]->tva_tx;
-
-			// Retrieve type from database for backward compatibility with old records
-			if ((! isset($localtax1_type) || $localtax1_type=='' || ! isset($localtax2_type) || $localtax2_type=='') // if tax type not defined
-			&& (! empty($localtax1_rate) || ! empty($localtax2_rate))) { // and there is local tax 
-				$localtaxtmp_array=getLocalTaxesFromRate($vatrate,0, $object->thirdparty, $mysoc);
-				$localtax1_type = $localtaxtmp_array[0];
-				$localtax2_type = $localtaxtmp_array[2];
-			}
-
-			// Retrieve global local tax
-			if ($localtax1_type && $localtax1ligne != 0) $this->localtax1[$localtax1_type][$localtax1_rate]+=$localtax1ligne;
-			if ($localtax2_type && $localtax2ligne != 0) $this->localtax2[$localtax2_type][$localtax2_rate]+=$localtax2ligne;
-
-			if (($object->lines[$i]->info_bits & 0x01) == 0x01) $vatrate .= '*';
-			if (!isset($this->tva[$vatrate])) 	$this->tva[$vatrate] = 0.0;
-			if ($tvaligne > 0.0) $this->tva[$vatrate] += $tvaligne;
 
 			/***** Add intern dashed line *****/
 			// If not the last line
@@ -1224,6 +1229,18 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		    $tab2_top = $posy;
 		}*/
 
+		$special_endline = array();
+		foreach ($object->lines as $i => $line) {
+			if ($line->special_code == 10050172) {
+				$special_endline[$line->rowid] = array(
+					'name' => $outputlangs->convToOutputCharset($line->description),
+					'amountHT' => $line->total_ht,
+					'TVA' => (string) round($line->tva_tx, 1) . '%',
+					'amountTTC' => $line->total_ttc,
+				);
+			}
+		}
+
 		// Total HT
 		$index = 1;
 		$posy += $tab2_hl;
@@ -1232,6 +1249,9 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
 		$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("TotalHT"), 0, 'L', 1);
 		$total_ht = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1 ? $object->multicurrency_total_ht : $object->total_ht);
+		foreach ($special_endline as $i => $line) {
+			$total_ht -= $line['amountHT'];
+		}
 		$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
 		$pdf->MultiCell($largcol2, $tab2_hl, price($this->sign * ($total_ht + (! empty($object->remise)?$object->remise:0)), 0, $outputlangs), 0, 'R', 1);
 
@@ -1248,6 +1268,19 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($largcol2, $tab2_hl, price(round(-$this->sign * $object->prorata_discount, 2), 0, $outputlangs), $useborder, 'R', 1);
 			$total_ttc -= $object->prorata_discount;
+		}
+
+		foreach ($special_endline as $i => $line) {
+			$index++;
+			$tab2_top = $this->setNewPage($tab2_top, $pdf, $object, $outputlangs);
+			//$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
+			$pdf->SetTextColor(0,0,0);
+			$pdf->SetFillColor(255,255,255);
+			//$pdf->MultiCell($col2x-$col1x, $tab2_hl, $line['name'] . ' HT', $useborder, 'L', 1);
+			$pdf->writeHTMLCell($col2x-$col1x, $tab2_hl, $col1x, $tab2_top + $tab2_hl * $index, $line['name'] . ' HT (TVA ' . $line['TVA'] . ')', 0, 1, 0, true, 'J', true);
+			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
+			$pdf->MultiCell($largcol2, $tab2_hl, price(round($this->sign * $line['amountHT'], 2), 0, $outputlangs), $useborder, 'R', 1);
+			$total_ttc += $object->$line['amountTTC'];
 		}
 
 		// Show VAT by rates and total
