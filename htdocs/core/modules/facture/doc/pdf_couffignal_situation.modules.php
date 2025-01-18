@@ -388,7 +388,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		
 		// Support modSubtotal lines
 		if (class_exists('TSubtotal')) {
-			if (TSubtotal::isTitle($object->lines[$i]) || TSubtotal::isSubtotal($object->lines[$i])) {	
+			if (TSubtotal::isTitle($object->lines[$i]) || TSubtotal::isSubtotal($object->lines[$i]) || TSubtotal::isFreeText($object->lines[$i])) {	
 				$values = array(
 					'Designation' => '',
 					'Unit' => '',
