@@ -2488,7 +2488,6 @@ class Facture extends CommonInvoice
 
 		// Define vars
 		$totalIfCompleted = 0;
-		$i=0;
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
@@ -2499,6 +2498,51 @@ class Facture extends CommonInvoice
 		}
 
 		return round($totalIfCompleted, 2);
+	}
+
+	/**
+	 * Compute the total HT of the invoice without the special-code lines
+	 * Exclusive of prorata, if any.
+	 * Return the 2 digit rounded price.
+	 *
+	 * @return	float
+	 */
+	public function totalExeptSpecialLines()
+	{
+		global $conf;
+
+		$total = 0;
+
+		// Loop on all lines
+		foreach ($this->lines as $line) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+				$total += $line->total_ht ;
+			}
+		}
+
+		return round($total, 2);
+	}
+
+	/**
+	 * Return the special-code lines
+	 *
+	 * @return	array of FactureLines
+	 */
+	public function getSpecialLines()
+	{
+		global $conf;
+
+		$result = array();
+
+		// Loop on all lines
+		foreach ($this->lines as $line) {
+			if ($line->special_code == 10050172) {
+				$result[] = $line;
+			}
+		}
+		print('KKK' . count($result));
+
+		return $result;
 	}
 
 	/**
