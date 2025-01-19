@@ -2501,6 +2501,45 @@ class Facture extends CommonInvoice
 	}
 
 	/**
+	 * Return all the FactureLine instances present in situation serie
+	 *
+	 * @return	array
+	 */
+	public function marginal_special_lines($outputlangs) {
+		// Gather previous situation data
+		$this->fetchPreviousNextSituationInvoice();
+		$TPreviousInvoices = &$this->tab_previous_situation_invoice;
+		$prev_inv = end($TPreviousInvoices);
+
+		// Temp var
+		$special_lines = array();
+
+		
+		// Go over invoice lines
+		foreach ($this->getSpecialLines() as $k => $line) {
+			$name = $outputlangs->convToOutputCharset($line->description);
+			$special_lines[$name] = array(
+				'name' => $name,
+				'amountHT' => $line->total_ht,
+				'TVA' => (string) round($line->tva_tx, 1) . '%',
+				'amountTTC' => $line->total_ttc,
+			);
+		}
+
+		if ($prev_inv) {
+			foreach ($prev_inv->getSpecialLines() as $k => $prev_line) {
+				$name = $outputlangs->convToOutputCharset($prev_line->description);
+				if (array_key_exists($name, $special_lines)) {
+					$special_lines[$name]['amountHT'] -= $prev_line->total_ht;
+					$special_lines[$name]['amountTTC'] -= $prev_line->total_ttc;
+				}
+			}
+		}
+
+		return $special_lines;
+	}
+
+	/**
 	 * Compute the total HT of the invoice without the special-code lines
 	 * Exclusive of prorata, if any.
 	 * Return the 2 digit rounded price.
@@ -2540,7 +2579,31 @@ class Facture extends CommonInvoice
 				$result[] = $line;
 			}
 		}
-		print('KKK' . count($result));
+
+		return $result;
+	}
+
+	/**
+	 * Return extract of the special-code lines
+	 *
+	 * @return	array of FactureLines
+	 */
+	public function getExtractSpecialLines($outputlangs)
+	{
+		global $conf;
+
+		$result = array();
+
+		// Loop on all lines
+		foreach ($this->getSpecialLines() as $k => $line) {
+			$name = $outputlangs->convToOutputCharset($line->description);
+			$result[$name] = array(
+				'name' => $name,
+				'amountHT' => $line->total_ht,
+				'TVA' => (string) round($line->tva_tx, 1) . '%',
+				'amountTTC' => $line->total_ttc,
+			);
+		}
 
 		return $result;
 	}

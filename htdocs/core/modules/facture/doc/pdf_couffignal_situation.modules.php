@@ -1151,7 +1151,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$pdf->SetFont('','', $default_font_size - 1);
 
 		// Tableau total
-		$col1x = 120; $col2x = 170;
+		$col1x = 120; $col2x = 190;
 		if ($this->page_width < 210) {$col2x-=20;}// To work with US executive format
 		$largcol2 = ($this->page_width - $this->margin_right - $col2x);
 
@@ -1224,17 +1224,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		    $tab2_top = $posy;
 		}*/
 
-		$special_endline = array();
-		foreach ($object->lines as $i => $line) {
-			if ($line->special_code == 10050172) {
-				$special_endline[$line->rowid] = array(
-					'name' => $outputlangs->convToOutputCharset($line->description),
-					'amountHT' => $line->total_ht,
-					'TVA' => (string) round($line->tva_tx, 1) . '%',
-					'amountTTC' => $line->total_ttc,
-				);
-			}
-		}
+		$special_endline = $object->marginal_special_lines($outputlangs);
 
 		// Total HT
 		$index = 1;
@@ -1584,19 +1574,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		return $posy;
 	}
 
-	function _cumulate_lines($special_lines) {
-		$cumulated_lines = array();
-		foreach ($special_lines as $idx => $l) {
-			if (array_key_exists($l->description, $cumulated_lines)) {
-				$cumulated_lines[$l->description] += $l->total_ht;
-			} else {
-				$cumulated_lines[$l->description] = $l->total_ht;
-			}
-		}
-
-		return $cumulated_lines;
-	}
-
 	function _getDataSituation(&$object, $outputlangs, $default_font_size) {
 		// Gather previous situation data
 		$object->fetchPreviousNextSituationInvoice();
@@ -1604,7 +1581,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$facDerniereSituation = end($TPreviousInvoice);
 
 		// Temp vars
-		$special_lines = array();
 		$cumul_anterieur_ht = $cumul_anterieur_tva = $retenue_garantie = 0;
 		$retenue_garantie_anterieure = 0;
 		
@@ -1614,7 +1590,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$cumul_anterieur_ht += $fac->total_ht;
 				$cumul_anterieur_tva += $fac->total_tva;
 				$retenue_garantie_anterieure += $fac->total_ttc * ($fac->array_options['options_retenue_garantie'] ?? 0) / 100;
-				$special_lines = array_merge($special_lines, $fac->getSpecialLines());
 			}
 		}
 		$nouveau_cumul = $cumul_anterieur_ht + $object->total_ht;
@@ -1633,20 +1608,19 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				'values' => array(
 					'NewCumul' => price($object->totalExeptSpecialLines()),
 					'PrevCumul' => price($facDerniereSituation->totalExeptSpecialLines()),
-					'Situation' => 'N/A',//price(0),
+					'Situation' => price($object->totalExeptSpecialLines() - $facDerniereSituation->totalExeptSpecialLines()),
 				),
 			), 
 		);
 
 		// Merge/Cumul special_lines
-		$cumulated_lines_previous = $this->_cumulate_lines($special_lines);
-		$cumulated_lines_current = $this->_cumulate_lines(array(...$special_lines, ...$object->getSpecialLines()));
+		$cumulated_lines_previous = $facDerniereSituation->getExtractSpecialLines($outputlangs);
+		$cumulated_lines_current = $object->getExtractSpecialLines($outputlangs);
 
-		print_r('TTT ' . count($cumulated_lines_previous) . '<br/>');
-		print_r('XXX ' . count($cumulated_lines_current) . '<br/>');
-
-		foreach ($cumulated_lines_current as $name => $total) {
-			$prev_cum_price = array_key_exists($name, $cumulated_lines_previous) ? $cumulated_lines_previous[$name] : 0;
+		foreach ($cumulated_lines_current as $idx => $line) {
+			$name = $line['name'];
+			$total = (float) $line['amountHT'];
+			$prev_cum_price = array_key_exists($name, $cumulated_lines_previous) ? $cumulated_lines_previous[$name]['amountHT'] : 0;
 			$recap_lines[] = array(
 				'name' => $outputlangs->convToOutputCharset($name),
 				'spaceBefore' => 0,
@@ -1662,8 +1636,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				),
 			);
 		}
-
-		print_r('UUU ' . $recap_lines . '<br/>');
 
 		$j = count($recap_lines) - 1;
 		$recap_lines[$j]['Hline'] = true;
