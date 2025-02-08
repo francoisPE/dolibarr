@@ -949,7 +949,8 @@ if (empty($reshook)) {
 	if ($action == "confirm_setdraft" && GETPOST('confirm', 'alpha') == "yes" && $id > 0 && $user->hasRight('expensereport', 'creer')) {
 		$object = new ExpenseReport($db);
 		$object->fetch($id);
-		if ($user->id == $object->fk_user_author || $user->id == $object->fk_user_valid) {
+		if ( ($user->id == $object->fk_user_author || $user->id == $object->fk_user_valid) || (getDolGlobalInt('MAIN_GIVE_EXPENSEAPPROVER_RIGTHTOMODIFY') && ($user->hasRight('expensereport', 'approve'))) ) {
+		//if ($user->id == $object->fk_user_author || $user->id == $object->fk_user_valid) {
 			$result = $object->setStatut(0);
 
 			if ($result > 0) {
