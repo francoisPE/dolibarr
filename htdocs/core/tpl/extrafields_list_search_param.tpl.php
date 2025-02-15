@@ -3,7 +3,7 @@
 // Protection to avoid direct call of template
 if (empty($conf) || !is_object($conf)) {
 	print "Error, template page can't be called as URL";
-	exit;
+	exit(1);
 }
 
 // Loop to complete $param for extrafields
@@ -11,7 +11,9 @@ if (!empty($search_array_options) && is_array($search_array_options)) {	// $extr
 	if (empty($search_options_pattern)) {
 		$search_options_pattern = 'search_options_';
 	}
-
+	if (empty($extrafieldsobjectkey) && is_object($object)) {
+		$extrafieldsobjectkey = $object->table_element;
+	}
 	foreach ($search_array_options as $key => $val) {
 		$crit = $val;
 		$tmpkey = preg_replace('/'.$search_options_pattern.'/', '', $key);

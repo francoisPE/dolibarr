@@ -59,7 +59,7 @@ class FormIntervention
 	 *	@param	int		$maxlength	Maximum length of label
 	 *	@param	int		$showempty	Show empty line ('1' or string to show for empty line)
 	 *	@param	bool	$draftonly	Show only drafts intervention
-	 *	@return int         		Nbre of project if OK, <0 if KO
+	 *	@return string         		HTML code for the select list if OK, empty if KO
 	 */
 	public function select_interventions($socid = -1, $selected = 0, $htmlname = 'interventionid', $maxlength = 16, $showempty = 1, $draftonly = false)
 	{
@@ -71,10 +71,10 @@ class FormIntervention
 		$hideunselectables = false;
 
 		// Search all contacts
-		$sql = "SELECT f.rowid, f.ref, f.fk_soc, f.fk_statut";
+		$sql = "SELECT f.rowid, f.ref, f.fk_soc, f.fk_statut as status";
 		$sql .= " FROM ".$this->db->prefix()."fichinter as f";
 		$sql .= " WHERE f.entity = ".$conf->entity;
-		if ($socid != '') {
+		if ($socid >= 0) {
 			if ($socid == '0') {
 				$sql .= " AND (f.fk_soc = 0 OR f.fk_soc IS NULL)";
 			} else {
@@ -88,7 +88,7 @@ class FormIntervention
 		dol_syslog(get_class($this)."::select_intervention", LOG_DEBUG);
 		$resql = $this->db->query($sql);
 		if ($resql) {
-			$out .= '<select id="interventionid" class="flat" name="'.dol_escape_htmltag($htmlname).'">';
+			$out .= '<select id="'.dol_escape_htmltag($htmlname).'" class="flat" name="'.dol_escape_htmltag($htmlname).'">';
 			if ($showempty) {
 				$out .= '<option value="0">';
 				if (!is_numeric($showempty)) {
@@ -108,11 +108,11 @@ class FormIntervention
 						// Do nothing
 					} else {
 						$labeltoshow = dol_trunc($obj->ref, 18);
-						if (!empty($selected) && $selected == $obj->rowid && $obj->statut > 0) {
+						if (!empty($selected) && $selected == $obj->rowid && $obj->status > 0) {
 							$out .= '<option value="'.$obj->rowid.'" selected>'.$labeltoshow.'</option>';
 						} else {
 							$disabled = 0;
-							if (!$obj->fk_statut > 0 && ! $draftonly) {
+							if (!$obj->status > 0 && ! $draftonly) {
 								$disabled = 1;
 								$labeltoshow .= ' ('.$langs->trans("Draft").')';
 							}

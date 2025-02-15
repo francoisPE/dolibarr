@@ -4,6 +4,7 @@
  * Copyright (C) 2005-2012 Regis Houssin		<regis.houssin@inodbox.com>
  * Copyright (C) 2011-2022 Philippe Grand       <philippe.grand@atoo-net.com>
  * Copyright (C) 2023      Christian Foellmann  <christian@foellmann.de>
+ * Copyright (C) 2024       Frédéric France         <frederic.france@free.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +23,7 @@
 /**
  *       \file       htdocs/comm/propal/contact.php
  *       \ingroup    propal
- *       \brief      Tab to manage contacts/adresses of proposal
+ *       \brief      Tab to manage contacts/addresses of proposal
  */
 
 // Load Dolibarr environment
@@ -34,15 +35,24 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/html.formother.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formcompany.class.php';
 require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
 
+/**
+ * @var Conf $conf
+ * @var DoliDB $db
+ * @var HookManager $hookmanager
+ * @var Translate $langs
+ * @var User $user
+ */
+
 // Load translation files required by the page
 $langs->loadLangs(array('facture', 'propal', 'orders', 'sendings', 'companies'));
 
-$id = GETPOST('id', 'int');
+$id = GETPOSTINT('id');
 $ref = GETPOST('ref', 'alpha');
-$lineid = GETPOST('lineid', 'int');
+$lineid = GETPOSTINT('lineid');
 $action = GETPOST('action', 'aZ09');
 
 $object = new Propal($db);
+$error = 0;
 
 // Load object
 if ($id > 0 || !empty($ref)) {
@@ -69,6 +79,7 @@ if (!empty($user->socid)) {
 	$socid = $user->socid;
 }
 $hookmanager->initHooks(array('proposalcontactcard', 'globalcard'));
+$result = restrictedArea($user, 'propal', $object->id);
 
 restrictedArea($user, 'propal', $object->id);
 
@@ -88,7 +99,7 @@ if (empty($reshook)) {
 	// Add new contact
 	if ($action == 'addcontact' && $user->hasRight('propal', 'creer')) {
 		if ($object->id > 0) {
-			$contactid = (GETPOST('userid', 'int') ? GETPOST('userid', 'int') : GETPOST('contactid', 'int'));
+			$contactid = (GETPOSTINT('userid') ? GETPOSTINT('userid') : GETPOSTINT('contactid'));
 			$typeid    = (GETPOST('typecontact') ? GETPOST('typecontact') : GETPOST('type'));
 			$result    = $object->add_contact($contactid, $typeid, GETPOST("source", 'aZ09'));
 		}
@@ -107,7 +118,7 @@ if (empty($reshook)) {
 	} elseif ($action == 'swapstatut' && $user->hasRight('propal', 'creer')) {
 		// Toggle the status of a contact
 		if ($object->id > 0) {
-			$result = $object->swapContactStatus(GETPOST('ligne', 'int'));
+			$result = $object->swapContactStatus(GETPOSTINT('ligne'));
 		}
 	} elseif ($action == 'deletecontact' && $user->hasRight('propal', 'creer')) {
 		// Delete contact
