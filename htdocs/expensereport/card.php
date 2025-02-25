@@ -950,7 +950,6 @@ if (empty($reshook)) {
 		$object = new ExpenseReport($db);
 		$object->fetch($id);
 		if ( ($user->id == $object->fk_user_author || $user->id == $object->fk_user_valid) || (getDolGlobalInt('MAIN_GIVE_EXPENSEAPPROVER_RIGTHTOMODIFY') && ($user->hasRight('expensereport', 'approve'))) ) {
-		//if ($user->id == $object->fk_user_author || $user->id == $object->fk_user_valid) {
 			$result = $object->setStatut(0);
 
 			if ($result > 0) {
