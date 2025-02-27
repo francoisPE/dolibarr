@@ -368,11 +368,11 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			'Qty' => pdf_getlineqty($object, $i, $outputlangs, $hidedetails),
 			'PriceUHT' => pdf_getlineupexcltax($object, $i, $outputlangs, $hidedetails),
 			'TotalSituationCompleteHT' => price($complete_price),
-			'AvcmtMarg' => $cumulated_progress - $prev_prog_global,
-			'AvcmtCumulAct' => $cumulated_progress,
-			'AvcmtCumulPrec' => $prev_prog_global,
+			'AvcmtMarg' => round($cumulated_progress - $prev_prog_global, 2),
+			'AvcmtCumulAct' => round($cumulated_progress, 2),
+			'AvcmtCumulPrec' => round($prev_prog_global, 2),
 			'Reduction' => pdf_getlineremisepercent($object, $i, $outputlangs, $hidedetails),
-			'TotalHT' => $total_HT
+			'TotalHT' => price(round( (float) price2num($total_HT), 2))
 		);
 		if (getDolGlobalInt('PRODUCT_USE_UNITS')) { $values['Unit'] = pdf_getlineunit($object, $i, $outputlangs, $hidedetails, $hookmanager); }
 		// TODO: is the call to Main usefull ?
@@ -413,7 +413,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					$total_HT = $marg_prog == 0 ? price(0) : pdf_getlinetotalexcltax($object, $i-$j, $outputlangs, $hidedetails);
 					$sum += price2num($total_HT);
 				}
-				$values['TotalHT'] = price($sum);
+				$values['TotalHT'] = price(round($sum, 2));
 			}
 		}
 
@@ -1265,7 +1265,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$pdf->writeHTMLCell($col2x-$col1x, $tab2_hl, $col1x, $tab2_top + $tab2_hl * $index, $line['name'] . ' HT (TVA ' . $line['TVA'] . ')', 0, 1, 0, true, 'J', true);
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($largcol2, $tab2_hl, price(round($this->sign * $line['amountHT'], 2), 0, $outputlangs), $useborder, 'R', 1);
-			$total_ttc += $object->$line['amountTTC'];
 		}
 
 		// Show VAT by rates and total
@@ -1621,7 +1620,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		foreach ($cumulated_lines_current as $idx => $line) {
 			$name = $line['name'];
 			$total = (float) $line['amountHT'];
-			$prev_cum_price = array_key_exists($name, $cumulated_lines_previous) ? $cumulated_lines_previous[$name]['amountHT'] : 0;
+			$prev_cum_price = array_key_exists($idx, $cumulated_lines_previous) ? $cumulated_lines_previous[$idx]['amountHT'] : 0;
 			$recap_lines[] = array(
 				'name' => $outputlangs->convToOutputCharset($name),
 				'spaceBefore' => 0,
