@@ -1266,7 +1266,7 @@ if (!empty($usemargins) && $user->hasRight('margins', 'creer')) {
 		<?php if (getDolGlobalString('MAIN_MAKE_POSSIBLE_SET_UNIT_TO_PREDEF')) { ?>
 				jQuery("#np_marginRate, #np_markRate, .np_marginRate, .np_markRate").hide();
 		<?php } else { ?>
-				jQuery("#np_marginRate, #np_markRate, .np_marginRate, .np_markRate").hide();					  
+				jQuery("#np_marginRate, #np_markRate, .np_marginRate, .np_markRate, #units, #title_units").hide();				  
 		<?php } ?>
 		jQuery("#buying_price").show();
 		jQuery('#trlinefordates, .divlinefordates').show();
