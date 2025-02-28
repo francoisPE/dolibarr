@@ -3323,7 +3323,7 @@ if ($action == 'create') {
 			$projectid = (!empty($projectid) ? $projectid : $objectsrc->fk_project);
 			$ref_client = (!empty($objectsrc->ref_client) ? $objectsrc->ref_client : (!empty($objectsrc->ref_customer) ? $objectsrc->ref_customer : ''));
 			// -- Hook Couffignal
-			$ref_client = 'S' . $objectsrc->situation_cycle_ref + 1;
+			$ref_client = 'S' . $objectsrc->situation_counter + 1;
 			// --
 
 			// only if socid not filled else it's allready done upper

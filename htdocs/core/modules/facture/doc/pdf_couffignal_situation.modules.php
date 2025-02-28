@@ -1495,11 +1495,13 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		
 		/* COUF Custom table */
+		$marche = new Project($db);
+		$marche->fetch($object->fk_projet);
 		$recap_tab_height = 15;
 		$this->printRectBtp($pdf,$this->margin_left, $tab_top, $this->page_width-$this->margin_left-$this->margin_right, $recap_tab_height, $hidetop, $hidebottom);
 		$pdf->SetFont('','B', $default_font_size - 1);
 		$pdf->SetXY($this->margin_left+2, $tab_top+4);
-		$pdf->MultiCell(80,2, $outputlangs->transnoentities("Marché") . ' : '. $outputlangs->convToOutputCharset($object->ref_client),'','L');
+		$pdf->MultiCell(80,2, $outputlangs->transnoentities("Marché") . ' : '. $outputlangs->convToOutputCharset($object->projet->title) . " (" . $object->projet->ref . ")",'','L');
 		$pdf->SetXY($this->margin_left+2, $tab_top+8);
 		$pdf->MultiCell(80,2, $outputlangs->transnoentities("SituationSerieTotal") . ' : '. price($object->getLastSituationCompletePrice()) . ' HT','','L');
 		$pdf->SetFont('','', $default_font_size - 2);
