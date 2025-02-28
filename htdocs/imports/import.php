@@ -3,7 +3,7 @@
  * Copyright (C) 2005-2009 Regis Houssin        <regis.houssin@inodbox.com>
  * Copyright (C) 2012      Christophe Battarel	<christophe.battarel@altairis.fr>
  * Copyright (C) 2022      Charlene Benke		<charlene@patas-monkey.com>
- * Copyright (C) 2024		MDW							<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024       Frédéric France             <frederic.france@free.fr>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -238,7 +238,7 @@ if ($step == 3 && $datatoimport) {
 		dol_mkdir($conf->import->dir_temp);
 		$nowyearmonth = dol_print_date(dol_now(), '%Y%m%d%H%M%S');
 
-		$fullpath = $conf->import->dir_temp."/".$nowyearmonth.'-'.$_FILES['userfile']['name'];
+		$fullpath = $conf->import->dir_temp."/".$nowyearmonth.'-'.dol_string_nohtmltag(dol_sanitizeFileName($_FILES['userfile']['name']));
 		if (dol_move_uploaded_file($_FILES['userfile']['tmp_name'], $fullpath, 1) > 0) {
 			dol_syslog("File ".$fullpath." was added for import");
 		} else {
@@ -561,6 +561,8 @@ if ($step == 3 && $datatoimport) {
 
 	print '</table>';
 	print '</div>';
+
+	print '<br>';
 
 	print load_fiche_titre($langs->trans("InformationOnSourceFile"), '', 'file-export');
 
@@ -976,6 +978,8 @@ if ($step == 4 && $datatoimport) {
 	print '</table>';
 	print '</div>';
 
+	print '<br>';
+
 	print load_fiche_titre($langs->trans("InformationOnSourceFile"), '', 'file-export');
 
 	print '<div class="underbanner clearboth"></div>';
@@ -984,7 +988,7 @@ if ($step == 4 && $datatoimport) {
 
 	// Source file format
 	print '<tr><td class="titlefieldcreate">'.$langs->trans("SourceFileFormat").'</td>';
-	print '<td>';
+	print '<td class="nowraponall">';
 	$text = $objmodelimport->getDriverDescForKey($format);
 	// @phan-suppress-next-line PhanPluginSuspiciousParamPosition
 	print $form->textwithpicto($objmodelimport->getDriverLabelForKey($format), $text);
@@ -1053,7 +1057,7 @@ if ($step == 4 && $datatoimport) {
 	$s = str_replace('{s1}', img_picto('', 'grip_title', '', 0, 0, 0, '', '', 0), $s);
 	print $s;
 	print '</span> ';
-	$htmlother->select_import_model($importmodelid, 'importmodelid', $datatoimport, 1, $user->id);
+	$htmlother->select_import_model((string) $importmodelid, 'importmodelid', $datatoimport, 1, $user->id);
 	print '<input type="submit" class="button small reposition" value="'.$langs->trans("Select").'">';
 	print '</div>';
 	print '</form>';
@@ -1084,8 +1088,7 @@ if ($step == 4 && $datatoimport) {
 
 	$lefti = 1;
 	foreach ($fieldssource as $key => $val) {
-		// @phan-suppress-next-line PhanPluginSuspiciousParamPosition
-		show_elem($fieldssource, $key, $val); // key is field number in source file
+		show_elem($fieldssource, $key, (string) $key); // key is field number in source file @phan-suppress-current-line PhanPluginSuspiciousParamPosition
 		$listofkeys[$key] = 1;
 		$fieldsplaced[$key] = 1;
 		$valforsourcefieldnb[$lefti] = $key;
@@ -1646,6 +1649,8 @@ if ($step == 5 && $datatoimport) {
 	print '</table>';
 	print '</div>';
 
+	print '<br>';
+
 	print load_fiche_titre($langs->trans("InformationOnSourceFile"), '', 'file-export');
 
 	print '<div class="underbanner clearboth"></div>';
@@ -1654,7 +1659,7 @@ if ($step == 5 && $datatoimport) {
 
 	// Source file format
 	print '<tr><td class="titlefieldcreate">'.$langs->trans("SourceFileFormat").'</td>';
-	print '<td>';
+	print '<td class="nowraponall">';
 	$text = $objmodelimport->getDriverDescForKey($format);
 	// @phan-suppress-next-line PhanPluginSuspiciousParamPosition
 	print $form->textwithpicto($objmodelimport->getDriverLabelForKey($format), $text);
@@ -1757,6 +1762,7 @@ if ($step == 5 && $datatoimport) {
 	print '</table>';
 	print '</div>';
 
+	print '<br>';
 
 	print load_fiche_titre($langs->trans("InformationOnTargetTables"), '', 'file-import');
 
@@ -2135,15 +2141,17 @@ if ($step == 6 && $datatoimport) {
 	print '</table>';
 	print '</div>';
 
+	print '<br>';
+
 	print load_fiche_titre($langs->trans("InformationOnSourceFile"), '', 'file-export');
 
 	print '<div class="underbanner clearboth"></div>';
 	print '<div class="fichecenter">';
-	print '<table width="100%" class="border">';
+	print '<table width="100%" class="border tableforfield">';
 
 	// Source file format
 	print '<tr><td class="titlefieldcreate">'.$langs->trans("SourceFileFormat").'</td>';
-	print '<td>';
+	print '<td class="nowraponall">';
 	$text = $objmodelimport->getDriverDescForKey($format);
 	// @phan-suppress-next-line PhanPluginSuspiciousParamPosition
 	print $form->textwithpicto($objmodelimport->getDriverLabelForKey($format), $text);

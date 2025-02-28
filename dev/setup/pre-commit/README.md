@@ -32,8 +32,13 @@ the project: `pre-commit-config.yaml`.
 
    Then you can install pre-commit tool:\
    `python3 -m pip install pre-commit`
+   or
+   `python3 -m pip install pre-commit --break-system-packages`
 
-2. In your local git clone of the project, run `pre-commit install` to add the hooks 
+   Then install phpcbf and phpcs:\
+   `sudo apt install php-codesniffer`
+
+3. In your local git clone of the project, run `pre-commit install` to add the hooks 
    or copy the file *dev/setup/git/hooks/pre-commit* manually into *.git/hooks/pre-commit*
    (recommended because this file may differ from the file installed with the pre-commit install).
    The good file redirects output to the error channel so your IDE will be able to catch the error.

@@ -1,8 +1,9 @@
 <?php
+
 /* Copyright (C) 2004-2007 Rodolphe Quiedeville <rodolphe@quiedeville.org>
  * Copyright (C) 2005      Eric Seigne          <eric.seigne@ryxeo.com>
  * Copyright (C) 2006-2011 Laurent Destailleur  <eldy@users.sourceforge.net>
- * Copyright (C) 2024		MDW							<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024       Frédéric France             <frederic.france@free.fr>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -49,10 +50,19 @@ class mod_codecompta_aquarium extends ModeleAccountancyCode
 	 */
 	public $version = 'dolibarr'; // 'development', 'experimental', 'dolibarr'
 
+	/**
+	 * @var string Prefix customer accountancy code
+	 */
 	public $prefixcustomeraccountancycode;
 
+	/**
+	 * @var string Prefix supplier accountancy code
+	 */
 	public $prefixsupplieraccountancycode;
 
+	/**
+	 * @var int
+	 */
 	public $position = 20;
 
 
@@ -110,7 +120,6 @@ class mod_codecompta_aquarium extends ModeleAccountancyCode
 		if (getDolGlobalInt('COMPANY_AQUARIUM_REMOVE_SPECIAL')) {
 			$texte .= $langs->trans('RemoveSpecialChars').' = '.yn(1)."<br>\n";
 		}
-		//if (!empty($conf->global->COMPANY_AQUARIUM_REMOVE_ALPHA)) $texte.=$langs->trans('COMPANY_AQUARIUM_REMOVE_ALPHA').' = '.yn($conf->global->COMPANY_AQUARIUM_REMOVE_ALPHA)."<br>\n";
 		if (getDolGlobalString('COMPANY_AQUARIUM_CLEAN_REGEX')) {
 			$texte .= $langs->trans('COMPANY_AQUARIUM_CLEAN_REGEX').' = ' . getDolGlobalString('COMPANY_AQUARIUM_CLEAN_REGEX')."<br>\n";
 		}

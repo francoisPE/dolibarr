@@ -396,7 +396,8 @@ print '*/'."\n";
 $leftmenuwidth = 242;
 
 ?>
-/* <style type="text/css" > */
+
+/* IDE Hack <style type="text/css"> */
 
 
 /* ============================================================================== */
@@ -572,9 +573,11 @@ select.vmenusearchselectcombo {
 textarea:focus {
 	/* v6 box-shadow: 0 0 4px #8091BF; */
 	border: 1px solid #aaa !important;
+	/*
 	padding-left: 3px;
 	padding-right: 3px;
 	padding-top: 3px;
+	*/
 }
 input:focus, textarea:focus,
 button:focus:not(.button_search_x):not(.button_search):not(.button_removefilter), select:focus,
@@ -608,10 +611,12 @@ select#date_startday, select#date_startmonth, select#date_endday, select#date_en
 	margin-right: 4px;
 }
 
-input, input.flat, textarea, textarea.flat, form.flat select, select, select.flat, .dataTables_length label select {
-	color: var(--colortext);
+input, input.flat, form.flat select, select, select.flat, .dataTables_length label select {
 	border: none;
+}
+input, input.flat, textarea, textarea.flat, form.flat select, select, select.flat, .dataTables_length label select {
 	border<?php echo !getDolGlobalString('THEME_SHOW_BORDER_ON_INPUT') ? '-bottom' : ''; ?>: solid 1px var(--inputbordercolor);
+	color: var(--colortext);
 	font-family: <?php print $fontlist ?>;
 	outline: none;
 	margin: 0px 0px 0px 0px;
@@ -934,6 +939,7 @@ input[type=checkbox], input[type=radio] {
 /* CSS for placeholder */
 .placeholder { color: #ccc; }
 select.placeholder { color: #ccc; }
+.select2-selection__choice .placeholder { color: #aaa; }
 ::-webkit-input-placeholder { color:#ccc; }
 :-moz-placeholder { color:#bbb; } 			/* firefox 18- */
 ::-moz-placeholder { color:#bbb; } 			/* firefox 19+ */
@@ -2829,7 +2835,7 @@ td.nobordernopadding.widthpictotitle.col-picto {
 	width: 14px;
 }
 span.widthpictotitle {
-	font-size: 1.3em;
+	font-size: 1em;
 }
 .table-list-of-attached-files .col-picto, .table-list-of-links .col-picto {
 	opacity: 0.7 !important;
@@ -3968,9 +3974,10 @@ div.tabs {
 	margin-right: 6px !important;*/
 	clear:both;
 	height:100%;
+	margin-top: 18px;
 }
 div.tabsElem {
-	margin-top: 12px;
+/*	margin-top: 18px; */
 }		/* To avoid overlap of tabs when not browser */
 div.tabsElem a {
 	font-weight: normal !important;
@@ -4496,7 +4503,7 @@ tr.liste_titre_filter td.liste_titre {
 	padding-top: 4px;
 	padding-bottom: 3px;
 }
-.liste_titre_create td:not(.linecoldescription), .liste_titre_create th, .liste_titre_create .tagtd
+.liste_titre_create td, .liste_titre_create th, .liste_titre_create .tagtd
 {
 	border-top-width: 1px;
 	border-top-color: var(--colortopbordertitle1);
@@ -6064,6 +6071,8 @@ span.websitebuttonsitepreviewdisabled img, a.websitebuttonsitepreviewdisabled im
 table.cal_month    { border-spacing: 0px; }
 table.cal_month td:first-child  { border-left: 0px; }
 table.cal_month td:last-child   { border-right: 0px; }
+table.cal_month td { padding-left: 1px !important; padding-right: 1px !important; }
+table.cal_month.cal_peruser td { padding-left: 0 !important; padding-right: 0 !important; }
 .cal_current_month { border-top: 0; border-left: solid 1px #E0E0E0; border-right: 0; border-bottom: solid 1px #E0E0E0; }
 .cal_current_month_peruserleft { border-top: 0; border-left: solid 2px #6C7C7B; border-right: 0; border-bottom: solid 1px #E0E0E0; }
 .cal_current_month_oneday { border-right: solid 1px #E0E0E0; }
@@ -6111,6 +6120,12 @@ td.small.cal_event {
 
 td.cal_other_month {
 	opacity: 0.7;
+}
+td.event-past span  {
+	opacity: 0.5;
+}
+td.peruser_holiday_imp {
+	background-color: #aaa !important;
 }
 
 .cal_available { background: #0060d450; }
@@ -6428,7 +6443,10 @@ A.none, A.none:active, A.none:visited, A.none:hover {
 body.cke_show_borders {
 	margin: 5px !important;
 }
-
+table.cke_dialog.cke_browser_webkit {
+	border-collapse: separate;
+	border-radius: 10px;
+}
 .cke_dialog {
 	border: 1px #bbb solid ! important;
 }
@@ -6449,17 +6467,10 @@ a.cke_dialog_ui_button
 	-webkit-box-shadow: 3px 3px 4px #f4f4f4 !important;
 	box-shadow: 3px 3px 4px #f4f4f4 !important;
 }
-.cke_dialog_ui_hbox_last
-{
-	vertical-align: bottom !important;
-}
-.cke_dialog_ui_hbox_last
-{
-	vertical-align: bottom !important;
-}
 .cke_combo_text {
 	width: 40px !important;
 }
+
 /*
 .cke_editable
 {
@@ -7221,10 +7232,10 @@ span#select2-boxbookmark-container, span#select2-boxcombo-container {
 
 /* To emulate select 2 style */
 .select2-container-multi-dolibarr .select2-choices-dolibarr .select2-search-choice-dolibarr {
-  padding: 3px 5px 2px 5px;
+  padding: 3px 5px 3px 5px;
   margin: 0 0 2px 3px;
   position: relative;
-  line-height: 13px;
+  /* line-height: 1em; */
   color: #444;
   cursor: default;
   border: 1px solid #ddd;
@@ -7321,6 +7332,7 @@ select.multiselectononeline {
 	box-shadow: none;
 	-webkit-box-shadow: none !important;
 	box-shadow: none !important;
+	margin-top: 1px !important;
 	margin-bottom: 0 !important;
 }
 span.noborderoncategories a, li.noborderoncategories a {

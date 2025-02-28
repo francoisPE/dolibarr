@@ -7,7 +7,7 @@
  * Copyright (C) 2013		Florian Henry		<florian.henry@open-concept.pro>
  * Copyright (C) 2017		Juanjo Menent		<jmenent@2byte.es>
  * Copyright (C) 2022		OpenDSI				<support@open-dsi.fr>
- * Copyright (C) 2024		MDW					<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2025	MDW					<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024       Alexandre Spangaro  <alexandre@inovea-conseil.com>
  * Copyright (C) 2024       Frédéric France		  <frederic.france@free.fr>
  *
@@ -75,6 +75,7 @@ if (empty($object) || !is_object($object)) {
 @phan-var-force ?Product $product_static
 @phan-var-force string $text
 @phan-var-force string $description
+@phan-var-force Object $objp
 ';
 
 global $mysoc;
@@ -126,6 +127,12 @@ $coldisplay = 0;
 <?php } ?>
 	<td class="linecoldescription minwidth300imp"><?php $coldisplay++; ?><div id="line_<?php print $line->id; ?>"></div>
 <?php
+
+
+$parameters = ['line' => $line, 'i' => & $i, 'coldisplay' => & $coldisplay];
+$reshook = $hookmanager->executeHooks('objectLineView_BeforeProduct', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
+print $hookmanager->resPrint;
+
 if (($line->info_bits & 2) == 2) {
 	print '<a href="'.DOL_URL_ROOT.'/comm/remx.php?id='.$this->socid.'">';
 	$txt = '';
@@ -267,8 +274,12 @@ if (($line->info_bits & 2) == 2) {
 		}
 	}
 
+
+	$parameters = ['line' => $line, 'i' => & $i, 'coldisplay' => & $coldisplay];
+	$reshook = $hookmanager->executeHooks('objectLineView_BeforeProductExtrafield', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
+	print $hookmanager->resPrint;
 	// Line extrafield
-	if (!empty($extrafields)) {
+	if (!empty($extrafields) && empty($reshook)) {
 		$temps = $line->showOptionals($extrafields, 'view', array(), '', '', 1, 'line');
 		if (!empty($temps)) {
 			print '<div style="padding-top: 10px" id="extrafield_lines_area_'.$line->id.'" name="extrafield_lines_area_'.$line->id.'">';
@@ -278,17 +289,22 @@ if (($line->info_bits & 2) == 2) {
 	}
 }
 
-if ($user->hasRight('fournisseur', 'lire') && isset($line->fk_fournprice) && $line->fk_fournprice > 0 && !getDolGlobalString('SUPPLIER_HIDE_SUPPLIER_OBJECTLINES')) {
-	require_once DOL_DOCUMENT_ROOT.'/fourn/class/fournisseur.product.class.php';
-	$productfourn = new ProductFournisseur($this->db);
-	$productfourn->fetch_product_fournisseur_price($line->fk_fournprice);
-	print '<div class="clearboth"></div>';
-	print '<span class="opacitymedium">'.$langs->trans('Supplier').' : </span>'.$productfourn->getSocNomUrl(1, 'supplier').' - <span class="opacitymedium">'.$langs->trans('Ref').' : </span>';
-	// Supplier ref
-	if ($user->hasRight('produit', 'creer') || $user->hasRight('service', 'creer')) { // change required right here
-		print $productfourn->getNomUrl();
-	} else {
-		print $productfourn->ref_supplier;
+$parameters = ['line' => $line, 'i' => & $i, 'coldisplay' => & $coldisplay];
+$reshook = $hookmanager->executeHooks('objectLineView_ProductSupplier', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
+print $hookmanager->resPrint;
+if (empty($reshook)) {
+	if ($user->hasRight('fournisseur', 'lire') && isset($line->fk_fournprice) && $line->fk_fournprice > 0 && !getDolGlobalString('SUPPLIER_HIDE_SUPPLIER_OBJECTLINES')) {
+		require_once DOL_DOCUMENT_ROOT.'/fourn/class/fournisseur.product.class.php';
+		$productfourn = new ProductFournisseur($this->db);
+		$productfourn->fetch_product_fournisseur_price($line->fk_fournprice);
+		print '<div class="clearboth"></div>';
+		print '<span class="opacitymedium">'.$langs->trans('Supplier').' : </span>'.$productfourn->getSocNomUrl(1, 'supplier').' - <span class="opacitymedium">'.$langs->trans('Ref').' : </span>';
+		// Supplier ref
+		if ($user->hasRight('produit', 'creer') || $user->hasRight('service', 'creer')) { // change required right here
+			print $productfourn->getNomUrl();
+		} else {
+			print $productfourn->ref_supplier;
+		}
 	}
 }
 

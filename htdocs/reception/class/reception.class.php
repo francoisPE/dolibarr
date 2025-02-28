@@ -12,7 +12,7 @@
  * Copyright (C) 2016-2022	Ferran Marcet			<fmarcet@2byte.es>
  * Copyright (C) 2018		Quentin Vial-Gouteyron  <quentin.vial-gouteyron@atm-consulting.fr>
  * Copyright (C) 2022-2024  Frédéric France         <frederic.france@free.fr>
- * Copyright (C) 2024		MDW							<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -785,11 +785,13 @@ class Reception extends CommonObject
 				$this->fetch_origin();
 				if ($this->origin_object instanceof CommonObject && empty($this->origin_object->lines)) {
 					$res = $this->origin_object->fetch_lines();
-					if ($this->origin_object instanceof CommandeFournisseur) {
-						$this->commandeFournisseur = $this->origin_object;	// deprecated
-					} else {
-						$this->commandeFournisseur = null;	// deprecated
+					$this->commandeFournisseur = null;	// deprecated
+					if ($res < 0) {
+						return $res;
 					}
+				} elseif ($this->origin_object instanceof CommandeFournisseur && empty($this->origin_object->lines)) {
+					$res = $this->origin_object->fetch_lines();
+					$this->commandeFournisseur = $this->origin_object;	// deprecated
 					if ($res < 0) {
 						return $res;
 					}
@@ -825,8 +827,11 @@ class Reception extends CommonObject
 					if ((!getDolGlobalInt('STOCK_SUPPORTS_SERVICES') && $origin_line->product_type > 0) || $origin_line->product_type > 1) {
 						continue;
 					}
-
-					$qty_wished[$origin_line->fk_product] += $origin_line->qty;
+					if (array_key_exists($origin_line->fk_product, $qty_wished)) {
+						$qty_wished[$origin_line->fk_product] += $origin_line->qty;
+					} else {
+						$qty_wished[$origin_line->fk_product] = $origin_line->qty;
+					}
 				}
 
 				// compare array
@@ -1350,9 +1355,9 @@ class Reception extends CommonObject
 		if (empty($notooltip)) {
 			if (getDolGlobalInt('MAIN_OPTIMIZEFORTEXTBROWSER')) {
 				$label = $langs->trans("Reception");
-				$linkclose .= ' alt="'.dol_escape_htmltag($label, 1).'"';
+				$linkclose .= ' alt="'.dolPrintHTMLForAttribute($label).'"';
 			}
-			$linkclose .= ' title="'.dol_escape_htmltag($label, 1).'"';
+			$linkclose .= ' title="'.dolPrintHTMLForAttribute($label).'"';
 			$linkclose .= ' class="classfortooltip"';
 		}
 
@@ -1442,9 +1447,9 @@ class Reception extends CommonObject
 	/**
 	 *	Return clickable link of object (with eventually picto)
 	 *
-	 *	@param      string	    			$option                 Where point the link (0=> main card, 1,2 => shipment, 'nolink'=>No link)
-	 *  @param		array{string,mixed}		$arraydata				Array of data
-	 *  @return		string											HTML Code for Kanban thumb.
+	 *	@param	string	    			$option		Where point the link (0=> main card, 1,2 => shipment, 'nolink'=>No link)
+	 *  @param	?array<string,mixed>	$arraydata	Array of data
+	 *  @return	string								HTML Code for Kanban thumb.
 	 */
 	public function getKanbanView($option = '', $arraydata = null)
 	{
