@@ -4,9 +4,9 @@
  * Copyright (C) 2008		Raphael Bertrand	<raphael.bertrand@resultic.fr>
  * Copyright (C) 2010-2014	Juanjo Menent		<jmenent@2byte.es>
  * Copyright (C) 2012	  	Christophe Battarel <christophe.battarel@altairis.fr>
- * Copyright (C) 2012	   Cédric Salvador	 <csalvador@gpcsolutions.fr>
+ * Copyright (C) 2012		Cédric Salvador	 <csalvador@gpcsolutions.fr>
  * Copyright (C) 2012-2014  Raphaël Doursenaud  <rdoursenaud@gpcsolutions.fr>
- * Copyright (C) 2015	   Marcos García	   <marcosgdf@gmail.com>
+ * Copyright (C) 2015		Marcos García		<marcosgdf@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  */
 
 /**
- *	\file	   htdocs/core/modules/facture/doc/pdf_crabe.modules.php
+ *	\file		htdocs/core/modules/facture/doc/pdf_crabe.modules.php
  *	\ingroup	facture
  *	\brief	  File of class to generate customers invoices from crabe model
  */
@@ -108,14 +108,14 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->option_modereg = 1;				 // Affiche mode reglement
 		$this->option_condreg = 1;				 // Affiche conditions reglement
 		$this->option_codeproduitservice = 1;	  // Affiche code produit-service
-		$this->option_multilang = 1;			   // Dispo en plusieurs langues
+		$this->option_multilang = 1;				// Dispo en plusieurs langues
 		$this->option_escompte = 1;				// Affiche si il y a eu escompte
 		$this->option_credit_note = 1;			 // Support credit notes
-		$this->option_freetext = 1;				   // Support add of a personalised text
-		$this->option_draft_watermark = 1;		   // Support add of a watermark on drafts
+		$this->option_freetext = 1;					// Support add of a personalised text
+		$this->option_draft_watermark = 1;			// Support add of a watermark on drafts
 
-		$this->hideref = 1;						   // Hide internal reference in invoice lines
-		$this->hidedesc = 0;					   // Hide description in invoice lines
+		$this->hideref = 1;							// Hide internal reference in invoice lines
+		$this->hidedesc = 0;						// Hide description in invoice lines
 
 
 		// Define various properties
@@ -286,7 +286,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	/**
 	 *  Function to print a description line
 	 *
-	 *  @param  TCPDF			$pdf			   	PDF object
+	 *  @param  TCPDF			$pdf					PDF object
 	 *	@param	Object			$object				Current Invoice Object
 	 *	@param	int				$i					Current line number
 	 *  @param  Translate		$outputlangs		Object lang for output
@@ -294,8 +294,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	 *  @param  int				$h					Height
 	 *  @param  int				$posx				Pos x
 	 *  @param  int				$posy				Pos y
-	 *  @param  int				$this->hideref	   		Hide reference
-	 *  @param  int				$this->hidedesc		   Hide description
+	 *  @param  int				$this->hideref				Hide reference
+	 *  @param  int				$this->hidedesc			Hide description
 	 * 	@param	int				$issupplierline		Is it a line for a supplier object ?
 	 *  @return int		 					1=OK, 0=KO
 	 */
@@ -519,7 +519,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$pdf->SetAuthor($outputlangs->convToOutputCharset($user->getFullName($outputlangs)));
 				$pdf->SetKeyWords($outputlangs->convToOutputCharset($object->ref)." ".$outputlangs->transnoentities("Invoice")." ".$outputlangs->convToOutputCharset($object->thirdparty->name));
 				if (getDolGlobalInt('MAIN_DISABLE_PDF_COMPRESSION')) $pdf->SetCompression(false);
-				$pdf->SetMargins($this->margin_left, $this->marge_haute, $this->margin_right);   // Left, Top, Right
+				$pdf->SetMargins($this->margin_left, $this->marge_haute, $this->margin_right);	// Left, Top, Right
 				$this->heightforfooter = 30 + (4*$nbpayments); // Height reserved to output the info and total part and payment part
 				
 				/*** 1ere Page BTP ***/
@@ -636,7 +636,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 				if (!empty(getDolGlobalString('MAIN_UMASK')))
 				@chmod($file, octdec(getDolGlobalString('MAIN_UMASK')));
-				return 1;   // No error
+				return 1;	// No error
 			}
 			else
 			{
@@ -650,16 +650,16 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		
 		$this->error = $langs->transnoentities("ErrorUnknown");
-		return 0;   // Default error
+		return 0;	// Default error
 	}
 
 
 	/**
 	 *  Show payments table
 	 *
-	 *  @param	PDF			$pdf		   Object PDF
+	 *  @param	PDF			$pdf			Object PDF
 	 *  @param  Object		$object		 Object invoice
-	 *  @param  int			$posy		   Position y in PDF
+	 *  @param  int			$posy			Position y in PDF
 	 *  @param  Translate	$outputlangs	Object langs for output
 	 *  @return int			 			<0 if KO, >0 if OK
 	 */
@@ -795,13 +795,13 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 	/**
-	 *   Show miscellaneous information (payment mode, payment term, ...)
+	 *	Show miscellaneous information (payment mode, payment term, ...)
 	 *
-	 *   @param		PDF			$pdf	 		Object PDF
-	 *   @param		Object		$object			Object to show
-	 *   @param		int			$posy			Y
-	 *   @param		Translate	$outputlangs	Langs object
-	 *   @return	void
+	 *	@param		PDF			$pdf	 		Object PDF
+	 *	@param		Object		$object			Object to show
+	 *	@param		int			$posy			Y
+	 *	@param		Translate	$outputlangs	Langs object
+	 *	@return	void
 	 */
 	function _tableau_info(&$pdf, $object, $posy, $outputlangs)
 	{
@@ -933,7 +933,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				if (! empty($object->fk_account) || ! empty($object->fk_bank) || getDolGlobalString('FACTURE_RIB_NUMBER'))
 				{
 					$bankid=(empty($object->fk_account) ? getDolGlobalString('FACTURE_RIB_NUMBER') : $object->fk_account);
-					if (! empty($object->fk_bank)) $bankid=$object->fk_bank;   // For backward compatibility when object->fk_account is forced with object->fk_bank
+					if (! empty($object->fk_bank)) $bankid=$object->fk_bank;	// For backward compatibility when object->fk_account is forced with object->fk_bank
 					$account = new Account($this->db);
 					$account->fetch($bankid);
 
@@ -1026,7 +1026,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 			/***** Initialize for line *****/
 			$curX = $this->columns[0]['Start'];
-			$pdf->SetFont('','', $default_font_size - 1);   // Into loop to work with multipage
+			$pdf->SetFont('','', $default_font_size - 1);	// Into loop to work with multipage
 			$pdf->SetTextColor(0, 0, 0);
 			$origin_page = $pdf->getPage();
 
@@ -1130,7 +1130,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	/**
 	 *	Show total to pay
 	 *
-	 *	@param	PDF			$pdf		   Object PDF
+	 *	@param	PDF			$pdf			Object PDF
 	 *	@param  Facture		$object		 Object invoice
 	 *	@param  int			$deja_regle	 Montant deja regle
 	 *	@param	int			$posy			Position depart
@@ -1278,7 +1278,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			} else {
 				// VAT
 				foreach($this->tva as $tvakey => $tvaval) {
-					if ($tvakey != 0) {   // On affiche pas taux 0
+					if ($tvakey != 0) {	// On affiche pas taux 0
 						$this->atleastoneratenotnull++;
 						$index++;
 						$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
@@ -1385,17 +1385,17 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	}
 
 	/**
-	 *   Show table for lines, full size except margins
+	 *	Show table for lines, full size except margins
 	 *
-	 *   @param		PDF			$pdf	 		Object PDF
-	 *   @param		string		$tab_top		Top position of table
-	 *   @param		string		$tab_height		Height of table (rectangle)
-	 *   @param		int			$nexY			Y (not used)
-	 *   @param		Translate	$outputlangs	Langs object
-	 *   @param		int			$hidetop		1=Hide top bar of array and title, 0=Hide nothing, -1=Hide only title
-	 *   @param		int			$hidebottom		Hide bottom bar of array
-	 *   @param		string		$currency		Currency code
-	 *   @return	void
+	 *	@param		PDF			$pdf	 		Object PDF
+	 *	@param		string		$tab_top		Top position of table
+	 *	@param		string		$tab_height		Height of table (rectangle)
+	 *	@param		int			$nexY			Y (not used)
+	 *	@param		Translate	$outputlangs	Langs object
+	 *	@param		int			$hidetop		1=Hide top bar of array and title, 0=Hide nothing, -1=Hide only title
+	 *	@param		int			$hidebottom		Hide bottom bar of array
+	 *	@param		string		$currency		Currency code
+	 *	@return	void
 	 */
 	function _grid_and_title(&$pdf, $tab_top, $tab_height, $nexY, $outputlangs, $hidetop = 0, $hidebottom=0, $currency='')
 	{
@@ -1443,17 +1443,17 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	}
 
 	/**
-	 *   Show table BTP
+	 *	Show table BTP
 	 *
-	 *   @param		PDF			$pdf	 		Object PDF
-	 *   @param		string		$tab_top		Top position of table
-	 *   @param		string		$tab_height		Height of table (rectangle)
-	 *   @param		int			$nexY			Y (not used)
-	 *   @param		Translate	$outputlangs	Langs object
-	 *   @param		int			$hidetop		1=Hide top bar of array and title, 0=Hide nothing, -1=Hide only title
-	 *   @param		int			$hidebottom		Hide bottom bar of array
-	 *   @param		string		$currency		Currency code
-	 *   @return	void
+	 *	@param		PDF			$pdf	 		Object PDF
+	 *	@param		string		$tab_top		Top position of table
+	 *	@param		string		$tab_height		Height of table (rectangle)
+	 *	@param		int			$nexY			Y (not used)
+	 *	@param		Translate	$outputlangs	Langs object
+	 *	@param		int			$hidetop		1=Hide top bar of array and title, 0=Hide nothing, -1=Hide only title
+	 *	@param		int			$hidebottom		Hide bottom bar of array
+	 *	@param		string		$currency		Currency code
+	 *	@return	void
 	 */
 
 	function _tableauBtp(&$pdf, $object, $tab_top, $nexY, $outputlangs, $hidetop=0, $hidebottom=0, $currency='')
@@ -1781,8 +1781,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		// initialize total (may be HT or TTC depending on price_base_type)
 		$tot_sans_remise = $pu * $qty;
-		$tot_avec_remise_ligne = $tot_sans_remise	   * (1 - ($remise_percent_ligne / 100));
-		$tot_avec_remise	   = $tot_avec_remise_ligne * (1 - ($remise_percent_global / 100));
+		$tot_avec_remise_ligne = $tot_sans_remise		* (1 - ($remise_percent_ligne / 100));
+		$tot_avec_remise		= $tot_avec_remise_ligne * (1 - ($remise_percent_global / 100));
 
 		// initialize result array
 		for ($i=0; $i <= 15; $i++) $result[$i] = 0;
@@ -2067,7 +2067,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			),
 			'SituationNbr' => array(
 				'spaceBefore' => 5,
-				'label' => $outputlangs->transnoentities("PDFCrabeBtpTitle", $object->situation_counter),
+				'label' => $object->situation_final ? $outputlangs->transnoentities("PDFInvoiceDGD") : $outputlangs->transnoentities("PDFCrabeBtpTitle", $object->situation_counter),
 				'spaceAfter' => 1,
 				'fontWeight' => 'B',
 				'fontSize' => $default_font_size,
@@ -2232,9 +2232,9 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 	/**
-	 *   	Show footer of page. Need this->issuer object
+	 *		Show footer of page. Need this->issuer object
 	 *
-	 *   	@param	PDF			$pdf	 			PDF
+	 *		@param	PDF			$pdf	 			PDF
 	 * 		@param	Object		$object				Object to show
 	 *	  @param	Translate	$outputlangs		Object lang for output
 	 *	  @param	int			$hidefreetext		1=Hide free text
