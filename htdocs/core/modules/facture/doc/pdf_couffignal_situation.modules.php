@@ -1495,15 +1495,24 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		
 		/* COUF Custom table */
-		$recap_tab_height = 15;
-		$this->printRectBtp($pdf,$this->margin_left, $tab_top, $this->page_width-$this->margin_left-$this->margin_right, $recap_tab_height, $hidetop, $hidebottom);
+		$rect_width = $this->page_width - $this->margin_left - $this->margin_right;
+		$lines = array(
+			$outputlangs->transnoentities("Marché") . ' : '. $outputlangs->convToOutputCharset($object->projet->title) . " (" . $object->projet->ref . ")",
+			$outputlangs->transnoentities("AdressMarche") . ' : '. $outputlangs->convToOutputCharset($object->projet->array_options['options_adresseduchantier']),
+			$outputlangs->transnoentities("SituationSerieTotal") . ' : '. price($object->getLastSituationCompletePrice()) . ' HT',
+		);
+		if (!empty($object->projet->array_options['options_referencechantier'])) {
+			array_push($lines, $outputlangs->transnoentities("RefMarche") . ' : '. $outputlangs->convToOutputCharset($object->projet->array_options['options_referencechantier']));
+		}
+		$h = 3;
 		$pdf->SetFont('','B', $default_font_size - 1);
-		$pdf->SetXY($this->margin_left+2, $tab_top+4);
-		$pdf->MultiCell(80,2, $outputlangs->transnoentities("Marché") . ' : '. $outputlangs->convToOutputCharset($object->projet->title) . " (" . $object->projet->ref . ")",'','L');
-		$pdf->SetXY($this->margin_left+2, $tab_top+8);
-		$pdf->MultiCell(80,2, $outputlangs->transnoentities("SituationSerieTotal") . ' : '. price($object->getLastSituationCompletePrice()) . ' HT','','L');
-		$pdf->SetFont('','', $default_font_size - 2);
-		$tab_top += ($recap_tab_height+5);
+		foreach ($lines as $idx => $label) {
+			$pdf->SetXY($this->margin_left + 2, $tab_top + $h);
+			$pdf->MultiCell($rect_width - 4, 2, $label, '', 'L');
+			$h += 4;
+		}		
+		$this->printRectBtp($pdf,$this->margin_left, $tab_top, $rect_width, $h + 3, $hidetop, $hidebottom);
+		$tab_top += ($h+5);
 
 
 
@@ -1616,6 +1625,24 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		// Merge/Cumul special_lines
 		$cumulated_lines_previous = $facDerniereSituation ? $facDerniereSituation->getExtractSpecialLines($outputlangs) : array();
 		$cumulated_lines_current = $object->getExtractSpecialLines($outputlangs);
+		$recap_lines[] = array(
+				'name' => $outputlangs->transnoentities("TotalHT"),
+				'spaceBefore' => 4,
+				'spaceAfter' => 0,
+				'Hline' => false,
+				'align' => 'R',
+				'fontWeight' => '',
+				'fontSize' => $default_font_size - 1,
+				'values' => array(
+					'NewCumul' => price($nouveau_cumul),
+					'PrevCumul' => price($cumul_anterieur_ht),
+					'Situation' => price($object->total_ht),
+				),
+			);
+
+		$j = count($recap_lines) - 1;
+		$recap_lines[$j]['Hline'] = true;
+		$recap_lines[$j]['spaceAfter'] = 4;
 
 		foreach ($cumulated_lines_current as $idx => $line) {
 			$name = $line['name'];
@@ -1637,24 +1664,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			);
 		}
 
-		$j = count($recap_lines) - 1;
-		$recap_lines[$j]['Hline'] = true;
-		$recap_lines[$j]['spaceAfter'] = 4;
-
-		$recap_lines[] = array(
-				'name' => $outputlangs->transnoentities("TotalHT"),
-				'spaceBefore' => 4,
-				'spaceAfter' => 0,
-				'Hline' => false,
-				'align' => 'R',
-				'fontWeight' => '',
-				'fontSize' => $default_font_size - 1,
-				'values' => array(
-					'NewCumul' => price($nouveau_cumul),
-					'PrevCumul' => price($cumul_anterieur_ht),
-					'Situation' => price($object->total_ht),
-				),
-			);
 		$recap_lines[] = array(
 				'name' => $outputlangs->transnoentities("VAT"),
 				'spaceBefore' => 0,
