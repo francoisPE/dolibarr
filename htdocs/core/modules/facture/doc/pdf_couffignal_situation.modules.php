@@ -1495,8 +1495,6 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		
 		/* COUF Custom table */
-		$marche = new Project($db);
-		$marche->fetch($object->fk_projet);
 		$recap_tab_height = 15;
 		$this->printRectBtp($pdf,$this->margin_left, $tab_top, $this->page_width-$this->margin_left-$this->margin_right, $recap_tab_height, $hidetop, $hidebottom);
 		$pdf->SetFont('','B', $default_font_size - 1);
