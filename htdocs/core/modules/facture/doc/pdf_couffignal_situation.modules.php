@@ -59,7 +59,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	var	$marge_haute;
 	var	$margin_bottom;
 
-	var $emetteur;	// Objet societe qui emet
+	var $issuer;	// Object for the issuing company
 
 	/**
 	 * @var bool Situation invoice type
@@ -104,7 +104,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$this->heightforinfotot = $this->margin_bottom + 20;	// Height reserved to output the footer (value include bottom margin)
 
 		$this->option_logo = 1;                    // Affiche logo
-		$this->option_tva = 1;                     // Gere option tva FACTURE_TVAOPTION
+		$this->option_tva = 1;                     // Manage option tva FACTURE_TVAOPTION
 		$this->option_modereg = 1;                 // Affiche mode reglement
 		$this->option_condreg = 1;                 // Affiche conditions reglement
 		$this->option_codeproduitservice = 1;      // Affiche code produit-service
@@ -119,8 +119,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 		// Define various properties
-		$this->emetteur=$mysoc;
-		if (empty($this->emetteur->country_code)) $this->emetteur->country_code = substr($langs->defaultlang,-2);    // By default, if was not defined
+		$this->issuer=$mysoc;
+		if (empty($this->issuer->country_code)) $this->issuer->country_code = substr($langs->defaultlang,-2);    // By default, if was not defined
 		$this->franchise =! $mysoc->tva_assuj;
 		$this->tva = array();
 		$this->localtax1 = array();
@@ -252,7 +252,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 	/**
      *  Function to compute size of the columns
-     * 	Populate attribute columns in $this with 2nd dimention width & start
+     * 	Populate attribute columns in $this with 2nd dimension width & start
      *
      *  @return     int         	    			1=OK, 0=KO
 	 */
@@ -375,7 +375,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			'TotalHT' => price(round( (float) price2num($total_HT), 2))
 		);
 		if (getDolGlobalInt('PRODUCT_USE_UNITS')) { $values['Unit'] = pdf_getlineunit($object, $i, $outputlangs, $hidedetails, $hookmanager); }
-		// TODO: is the call to Main usefull ?
+		// TODO: is the call to Main useful ?
 
 		/* Manage special lines */
 		// Support lines attributes
@@ -454,7 +454,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		/**** Prepare file ****/
 		if ($conf->facture->dir_output) {
-			/**** Pepare / Init ****/
+			/**** Prepare / Init ****/
 
 			// Object init
 			$object->fetch_thirdparty();
@@ -570,7 +570,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					$pdf->Rect($this->margin_left, $tab_top, $note_width, $height_note + 2);
 				}
 
-				/*** Page 2 & followings ***/
+				/*** Page 2 & following ***/
 
 				// Change orientation
 				$pdf->AddPage();
@@ -650,7 +650,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		
 		$this->error = $langs->transnoentities("ErrorUnknown");
-		return 0;   // Erreur par defaut
+		return 0;   // Default error
 	}
 
 
@@ -812,7 +812,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$pdf->SetFont('','', $default_font_size - 1);
 
 		// If France, show VAT mention if not applicable
-		if ($this->emetteur->country_code == 'FR' && $this->franchise == 1)
+		if ($this->issuer->country_code == 'FR' && $this->franchise == 1)
 		{
 			$pdf->SetFont('','B', $default_font_size - 2);
 			$pdf->SetXY($this->margin_left, $posy);
@@ -913,14 +913,14 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					{
 						$pdf->SetXY($this->margin_left, $posy);
 						$pdf->SetFont('','B', $default_font_size - $diffsizetitle);
-						$pdf->MultiCell(100, 3, $outputlangs->transnoentities('PaymentByChequeOrderedTo',$this->emetteur->name),0,'L',0);
+						$pdf->MultiCell(100, 3, $outputlangs->transnoentities('PaymentByChequeOrderedTo',$this->issuer->name),0,'L',0);
 						$posy=$pdf->GetY()+1;
 
 			            if (!getDolGlobalInt('MAIN_PDF_HIDE_CHQ_ADDRESS'))
 			            {
 							$pdf->SetXY($this->margin_left, $posy);
 							$pdf->SetFont('','', $default_font_size - $diffsizetitle);
-							$pdf->MultiCell(100, 3, $outputlangs->convToOutputCharset($this->emetteur->getFullAddress()), 0, 'L', 0);
+							$pdf->MultiCell(100, 3, $outputlangs->convToOutputCharset($this->issuer->getFullAddress()), 0, 'L', 0);
 							$posy=$pdf->GetY()+2;
 			            }
 					}
@@ -1188,7 +1188,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		    $total_a_payer = $total_a_payer * 100 / $avancementGlobal;
 		}
 
-		// Todo : Fix incorect amount later on
+		// Todo : Fix incorrect amount later on
 		/*if(!empty($TPreviousInvoice)){
 		    $pdf->setY($tab2_top);
 		    $posy = $pdf->GetY();
@@ -1857,36 +1857,36 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		{
 			// We work to define prices using the price without tax
 			$result[6] = price2num($tot_sans_remise, 'MT');
-			$result[8] = price2num($tot_sans_remise * (1 + ( (($info_bits & 1)?0:$txtva) / 100)) + $localtaxes[0], 'MT');	// Selon TVA NPR ou non
-			$result8bis= price2num($tot_sans_remise * (1 + ( $txtva / 100)) + $localtaxes[0], 'MT');	// Si TVA consideree normale (non NPR)
+			$result[8] = price2num($tot_sans_remise * (1 + ( (($info_bits & 1)?0:$txtva) / 100)) + $localtaxes[0], 'MT');	// If VAT "NPR" or not
+			$result8bis= price2num($tot_sans_remise * (1 + ( $txtva / 100)) + $localtaxes[0], 'MT');	// If non "non NPR" VAT
 			$result[7] = price2num($result8bis - ($result[6] + $localtaxes[0]), 'MT');
 
 			$result[0] = price2num($tot_avec_remise, 'MT');
-			$result[2] = price2num($tot_avec_remise * (1 + ( (($info_bits & 1)?0:$txtva) / 100)) + $localtaxes[1], 'MT');	// Selon TVA NPR ou non
-			$result2bis= price2num($tot_avec_remise * (1 + ( $txtva / 100)) + $localtaxes[1], 'MT');	// Si TVA consideree normale (non NPR)
+			$result[2] = price2num($tot_avec_remise * (1 + ( (($info_bits & 1)?0:$txtva) / 100)) + $localtaxes[1], 'MT');	// If VAT "NPR" or not
+			$result2bis= price2num($tot_avec_remise * (1 + ( $txtva / 100)) + $localtaxes[1], 'MT');	// If non "non NPR" VAT
 			$result[1] = price2num($result2bis - ($result[0] + $localtaxes[1]), 'MT');	// Total VAT = TTC - (HT + localtax)
 
 			$result[3] = price2num($pu, 'MU');
-			$result[5] = price2num($pu * (1 + ( (($info_bits & 1)?0:$txtva) / 100)) + $localtaxes[2], 'MU');	// Selon TVA NPR ou non
-			$result5bis= price2num($pu * (1 + ($txtva / 100)) + $localtaxes[2], 'MU');	// Si TVA consideree normale (non NPR)
+			$result[5] = price2num($pu * (1 + ( (($info_bits & 1)?0:$txtva) / 100)) + $localtaxes[2], 'MU');	// If VAT "NPR" or not
+			$result5bis= price2num($pu * (1 + ($txtva / 100)) + $localtaxes[2], 'MU');	// If non "non NPR" VAT
 			$result[4] = price2num($result5bis - ($result[3] + $localtaxes[2]), 'MU');
 		}
 		else
 		{
 			// We work to define prices using the price with tax
 			$result[8] = price2num($tot_sans_remise + $localtaxes[0], 'MT');
-			$result[6] = price2num($tot_sans_remise / (1 + ((($info_bits & 1)?0:$txtva) / 100)), 'MT');	// Selon TVA NPR ou non
-			$result6bis= price2num($tot_sans_remise / (1 + ($txtva / 100)), 'MT');	// Si TVA consideree normale (non NPR)
+			$result[6] = price2num($tot_sans_remise / (1 + ((($info_bits & 1)?0:$txtva) / 100)), 'MT');	// If VAT "NPR" or not
+			$result6bis= price2num($tot_sans_remise / (1 + ($txtva / 100)), 'MT');	// If non "non NPR" VAT
 			$result[7] = price2num($result[8] - ($result6bis + $localtaxes[0]), 'MT');
 
 			$result[2] = price2num($tot_avec_remise + $localtaxes[1], 'MT');
-			$result[0] = price2num($tot_avec_remise / (1 + ((($info_bits & 1)?0:$txtva) / 100)), 'MT');	// Selon TVA NPR ou non
-			$result0bis= price2num($tot_avec_remise / (1 + ($txtva / 100)), 'MT');	// Si TVA consideree normale (non NPR)
+			$result[0] = price2num($tot_avec_remise / (1 + ((($info_bits & 1)?0:$txtva) / 100)), 'MT');	// If VAT "NPR" or not
+			$result0bis= price2num($tot_avec_remise / (1 + ($txtva / 100)), 'MT');	// If non "non NPR" VAT
 			$result[1] = price2num($result[2] - ($result0bis + $localtaxes[1]), 'MT');	// Total VAT = TTC - (HT + localtax)
 
 			$result[5] = price2num($pu + $localtaxes[2], 'MU');
-			$result[3] = price2num($pu / (1 + ((($info_bits & 1)?0:$txtva) / 100)), 'MU');	// Selon TVA NPR ou non
-			$result3bis= price2num($pu / (1 + ($txtva / 100)), 'MU');	// Si TVA consideree normale (non NPR)
+			$result[3] = price2num($pu / (1 + ((($info_bits & 1)?0:$txtva) / 100)), 'MU');	// If VAT "NPR" or not
+			$result3bis= price2num($pu / (1 + ($txtva / 100)), 'MU');	// If non "non NPR" VAT
 			$result[4] = price2num($result[5] - ($result3bis + $localtaxes[2]), 'MU');
 		}
 
@@ -2035,8 +2035,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$pdf->SetXY($this->margin_left,$posy);
 
 		// Logo
-		$logo=$conf->mycompany->dir_output.'/logos/'.$this->emetteur->logo;
-		if ($this->emetteur->logo) {
+		$logo=$conf->mycompany->dir_output.'/logos/'.$this->issuer->logo;
+		if ($this->issuer->logo) {
 			if (is_readable($logo)) {
 			    $height = pdf_getHeightForLogo($logo);
 				$pdf->Image($logo, $this->margin_left, $posy, 0, $height);	// width=0 (auto)
@@ -2047,7 +2047,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				$pdf->MultiCell($w, 3, $outputlangs->transnoentities("ErrorGoToGlobalSetup"), 0, 'L');
 			}
 		} else {
-			$text = $this->emetteur->name;
+			$text = $this->issuer->name;
 			$pdf->MultiCell($w, 4, $outputlangs->convToOutputCharset($text), 0, 'L');
 		}
 
@@ -2145,7 +2145,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		if ($showaddress) {
 			$ref_height = max(42, $maxY + 5);
 			// Sender properties
-			$carac_emetteur = pdf_build_address($outputlangs, $this->emetteur, $object->thirdparty);
+			$carac_issuer = pdf_build_address($outputlangs, $this->issuer, $object->thirdparty);
 
 			// Show sender
 			$posy = getDolGlobalInt('MAIN_PDF_USE_ISO_LOCATION') ? 40 : $ref_height;
@@ -2169,13 +2169,13 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$pdf->SetTextColor(0,0,60);
 			$pdf->SetXY($posx+2,$posy+3);
 			$pdf->SetFont('','B', $default_font_size);
-			$pdf->MultiCell($widthrecbox-2, 4, $outputlangs->convToOutputCharset($this->emetteur->name), 0, 'L');
+			$pdf->MultiCell($widthrecbox-2, 4, $outputlangs->convToOutputCharset($this->issuer->name), 0, 'L');
 			$posy=$pdf->getY();
 
 			// Show sender information
 			$pdf->SetXY($posx+2,$posy);
 			$pdf->SetFont('','', $default_font_size - 1);
-			$pdf->MultiCell($widthrecbox-2, 4, $carac_emetteur, 0, 'L');
+			$pdf->MultiCell($widthrecbox-2, 4, $carac_issuer, 0, 'L');
 
 
 			// If BILLING contact defined on invoice, we use it
@@ -2195,7 +2195,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			}
 
 			$carac_client_name= pdfBuildThirdpartyName($thirdparty, $outputlangs);
-			$carac_client=pdf_build_address($outputlangs,$this->emetteur,$object->thirdparty,($usecontact?$object->contact:''),$usecontact,'target',$object);
+			$carac_client=pdf_build_address($outputlangs,$this->issuer,$object->thirdparty,($usecontact?$object->contact:''),$usecontact,'target',$object);
 
 			// Show recipient
 			$widthrecbox=getDolGlobalInt('MAIN_PDF_USE_ISO_LOCATION') ? 92 : 100;
@@ -2232,7 +2232,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 
 	/**
-	 *   	Show footer of page. Need this->emetteur object
+	 *   	Show footer of page. Need this->issuer object
      *
 	 *   	@param	PDF			$pdf     			PDF
 	 * 		@param	Object		$object				Object to show
@@ -2244,7 +2244,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	{
 		global $conf;
 		$showdetails = getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS');
-		return pdf_pagefoot($pdf, $outputlangs, 'INVOICE_FREE_TEXT', $this->emetteur, $this->margin_bottom, $this->margin_left, $this->page_height, $object, $showdetails, $hidefreetext);
+		return pdf_pagefoot($pdf, $outputlangs, 'INVOICE_FREE_TEXT', $this->issuer, $this->margin_bottom, $this->margin_left, $this->page_height, $object, $showdetails, $hidefreetext);
 	}
 
 
