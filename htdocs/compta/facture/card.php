@@ -5465,7 +5465,7 @@ if ($action == 'create') {
 				print '</tr>';
 			}
 
-			// New line to recap the total price of the situation invoice' serie
+			// New line to recap the total price of the situation invoice' series
 			print '<tr class="oddeven">';
 			print '<td colspan="2" class="left"><b>'.$langs->trans('SituationSerieTotal').'</b></td>';
 			print '<td></td>';
