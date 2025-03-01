@@ -1742,7 +1742,7 @@ if (empty($reshook)) {
 					min($rank, count($object->lines) + 1),
 					0,
 					$array_options,
-					(getDolGlobalInt('MAIN_EDIT_LINE_SET_UNIT_TO_PREDEF') ?  GETPOST('units', 'alpha') : $productsupplier->fk_unit),
+					(getDolGlobalInt('MAIN_EDIT_LINE_SET_UNIT_ON_EXISTING_PRODUCT') ?  GETPOST('units', 'alpha') : $productsupplier->fk_unit),
 					0,
 					$pu_devise,
 					GETPOST('fourn_ref', 'alpha'),

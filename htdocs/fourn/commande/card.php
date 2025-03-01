@@ -621,7 +621,7 @@ if (empty($reshook)) {
 					$date_start,
 					$date_end,
 					$array_options,
-					(getDolGlobalInt('MAIN_EDIT_LINE_SET_UNIT_TO_PREDEF') ?  GETPOST('units', 'alpha') : $productsupplier->fk_unit),
+					(getDolGlobalInt('MAIN_EDIT_LINE_SET_UNIT_ON_EXISTING_PRODUCT') ?  GETPOST('units', 'alpha') : $productsupplier->fk_unit),
 					$pu_devise,
 					'',
 					0,
