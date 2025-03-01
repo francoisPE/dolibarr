@@ -123,7 +123,7 @@ if ($nolinesbefore) {
 		<?php if (isModEnabled("multicurrency") && $this->multicurrency_code != $conf->currency) { ?>
 			<td class="linecoluht_currency right"><span id="title_up_ht_currency"><?php echo $langs->trans('PriceUHTCurrency'); ?></span></td>
 		<?php } ?>
-		<?php if (!empty($inputalsopricewithtax) && !getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX')) { ?>
+		<?php if (showInputTtc($object, $inputalsopricewithtax)) { ?>
 			<td class="linecoluttc right"><span id="title_up_ttc"><?php echo $langs->trans('PriceUTTC'); ?></span></td>
 		<?php } ?>
 		<td class="linecolqty right"><?php echo $langs->trans('Qty'); ?></td>
@@ -462,7 +462,7 @@ if ($nolinesbefore) {
 		</td>
 		<?php
 	}
-	if (!empty($inputalsopricewithtax) && !getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX')) {
+	if (showInputTtc($object, $inputalsopricewithtax)) {
 		$coldisplay++; ?>
 		<td class="nobottom linecoluttc right">
 			<input type="text" size="5" name="price_ttc" id="price_ttc" class="flat right" value="<?php echo(GETPOSTISSET("price_ttc") ? GETPOST("price_ttc", 'alpha', 2) : ''); ?>">
@@ -935,6 +935,199 @@ if (!empty($usemargins) && $user->hasRight('margins', 'creer')) {
 					if (isset($conf->global->MARGIN_TYPE)) {
 						if (getDolGlobalString('MARGIN_TYPE') == '1') {
 							print 'bestsupplierprice';
+							$('#date_start').removeAttr('mandatoryperiod');
+							$('#date_end').removeAttr('mandatoryperiod');
+							$('#date_start').attr('mandatoryperiod', data.mandatory_period);
+							$('#date_end').attr('mandatoryperiod', data.mandatory_period);
+
+							// service and we set mandatory_period to true
+							if (data.mandatory_period == 1 && data.type == 1) {
+								jQuery('#date_start').addClass('inputmandatory');
+								jQuery('#date_end').addClass('inputmandatory');
+							} else {
+								jQuery('#date_start').removeClass('inputmandatory');
+								jQuery('#date_end').removeClass('inputmandatory');
+							}
+
+							if (<?php echo (int) showInputTtc($object, $inputalsopricewithtax); ?> == 1 && data.pricebasetype == 'TTC') {
+								console.log("objectline_create.tpl set content of price_ttc");
+								jQuery("#price_ttc").val(data.price_ttc);
+							} else {
+								console.log("objectline_create.tpl set content of price_ht");
+								jQuery("#price_ht").val(data.price_ht);
+							}
+
+							// Set values for any fields in the form options_SOMETHING
+							for (var key in data.array_options) {
+								if (data.array_options.hasOwnProperty(key)) {
+									var field = jQuery("#" + key);
+									if(field.length > 0){
+										console.log("objectline_create.tpl set content of options_" + key);
+										field.val(data.array_options[key]);
+									}
+								}
+							}
+
+							var tva_tx = data.tva_tx;
+							var default_vat_code = data.default_vat_code;
+
+							// Now set the VAT
+							var stringforvatrateselection = tva_tx;
+							if (typeof default_vat_code != 'undefined' && default_vat_code != null && default_vat_code != '') {
+								stringforvatrateselection = stringforvatrateselection+' ('+default_vat_code+')';
+								<?php
+								// Special case for India
+								if (getDolGlobalString('MAIN_SALETAX_AUTOSWITCH_I_CS_FOR_INDIA')) {
+									?>
+									console.log("MAIN_SALETAX_AUTOSWITCH_I_CS_FOR_INDIA is on so we check if we need to autoswith the vat code");
+									console.log("mysoc->country_code=<?php echo $mysoc->country_code; ?> thirdparty->country_code=<?php echo $object->thirdparty->country_code; ?>");
+									new_default_vat_code = default_vat_code;
+									<?php
+									if ($mysoc->country_code == 'IN' && !empty($object->thirdparty) && $object->thirdparty->country_code == 'IN' && $mysoc->state_code == $object->thirdparty->state_code) {
+										// We are in India and states are same, we revert the vat code "I-x" into "CS-x"
+										?>
+										console.log("Countries are both IN and states are same, so we revert I into CS in default_vat_code="+default_vat_code);
+										new_default_vat_code = default_vat_code.replace(/^I\-/, 'C+S-');
+										<?php
+									} elseif ($mysoc->country_code == 'IN' && !empty($object->thirdparty) && $object->thirdparty->country_code == 'IN' && $mysoc->state_code != $object->thirdparty->state_code) {
+										// We are in India and states differs, we revert the vat code "CS-x" into "I-x"
+										?>
+										console.log("Countries are both IN and states differs, so we revert CS into I in default_vat_code="+default_vat_code);
+										new_default_vat_code = default_vat_code.replace(/^C\+S\-/, 'I-');
+										<?php
+									} ?>
+									if (new_default_vat_code != default_vat_code && jQuery('#tva_tx option:contains("'+new_default_vat_code+'")').val()) {
+										console.log("We found en entry into VAT with new default_vat_code, we will use it");
+										stringforvatrateselection = jQuery('#tva_tx option:contains("'+new_default_vat_code+'")').val();
+									}
+									<?php
+								} ?>
+							}
+							// Set vat rate if field is an input box
+							$('#tva_tx').val(tva_tx);
+							// Set vat rate by selecting the combo
+							//$('#tva_tx option').val(tva_tx);	// This is bugged, it replaces the vat key of all options
+							$('#tva_tx option').removeAttr('selected');
+							console.log("stringforvatrateselection="+stringforvatrateselection+" -> value of option label for this key="+$('#tva_tx option[value="'+stringforvatrateselection+'"]').val());
+							$('#tva_tx option[value="'+stringforvatrateselection+'"]').prop('selected', true);
+
+								<?php
+								if (getDolGlobalInt('PRODUIT_AUTOFILL_DESC') == 1) {
+									if (getDolGlobalInt('MAIN_MULTILANGS') && getDolGlobalString('PRODUIT_TEXTS_IN_THIRDPARTY_LANGUAGE')) { ?>
+							var proddesc = data.desc_trans;
+														<?php
+									} else { ?>
+							var proddesc = data.desc;
+										<?php
+									} ?>
+							console.log("objectline_create.tpl Load description into text area : "+proddesc);
+									<?php
+									if (getDolGlobalString('FCKEDITOR_ENABLE_DETAILS')) { ?>
+							if (typeof CKEDITOR == "object" && typeof CKEDITOR.instances != "undefined")
+							{
+								var editor = CKEDITOR.instances['dp_desc'];
+								if (editor) {
+									editor.setData(proddesc);
+								}
+							}
+														<?php
+									} else { ?>
+							jQuery('#dp_desc').text(proddesc);
+										<?php
+									} ?>
+									<?php
+								} ?>
+								<?php
+								if (getDolGlobalString('PRODUCT_LOAD_EXTRAFIELD_INTO_OBJECTLINES')) { ?>
+								jQuery.each(data.array_options, function( key, value ) {
+									jQuery('div[class*="det'+key.replace('options_','_extras_')+'"] > #'+key).val(value);
+								});
+													<?php
+								} ?>
+						},
+						'json'
+					);
+				}
+							<?php
+			}
+
+			if (!empty($usemargins) && $user->hasRight('margins', 'creer')) {
+				$langs->load('stocks'); ?>
+
+				/* Code for margin */
+				$("#fournprice_predef").find("option").remove();
+				$("#fournprice_predef").hide();
+				$("#buying_price").val("").show();
+
+				/* Call post to load content of combo list fournprice_predef */
+				var token = '<?php echo currentToken(); ?>';		// For AJAX Call we use old 'token' and not 'newtoken'
+				$.post('<?php echo DOL_URL_ROOT; ?>/fourn/ajax/getSupplierPrices.php?bestpricefirst=1', { 'idprod': $(this).val(), 'token': token }, function(data) {
+					if (data && data.length > 0)
+					{
+						var options = ''; var defaultkey = ''; var defaultprice = ''; var bestpricefound = 0;
+
+						var bestpriceid = 0; var bestpricevalue = 0;
+						var pmppriceid = 0; var pmppricevalue = 0;
+						var costpriceid = 0; var costpricevalue = 0;
+
+						/* setup of margin calculation */
+						var defaultbuyprice = '<?php
+						if (isset($conf->global->MARGIN_TYPE)) {
+							if (getDolGlobalString('MARGIN_TYPE') == '1') {
+								print 'bestsupplierprice';
+							}
+							if (getDolGlobalString('MARGIN_TYPE') == 'pmp') {
+								print 'pmp';
+							}
+							if (getDolGlobalString('MARGIN_TYPE') == 'costprice') {
+								print 'costprice';
+							}
+						} ?>';
+						console.log("objectline_create.tpl we will set the field for margin. defaultbuyprice="+defaultbuyprice);
+
+						var i = 0;
+						$(data).each(function() {
+							/* Warning: Lines must be processed in order: best supplier price, then pmpprice line then costprice */
+							if (this.id != 'pmpprice' && this.id != 'costprice')
+							{
+								i++;
+								this.price = parseFloat(this.price); // to fix when this.price >0
+								// If margin is calculated on best supplier price, we set it by default (but only if value is not 0)
+								//console.log("id="+this.id+"-price="+this.price+"-"+(this.price > 0));
+								if (bestpricefound == 0 && this.price > 0) { defaultkey = this.id; defaultprice = this.price; bestpriceid = this.id; bestpricevalue = this.price; bestpricefound=1; }	// bestpricefound is used to take the first price > 0
+							}
+							if (this.id == 'pmpprice')
+							{
+								// If margin is calculated on PMP, we set it by default (but only if value is not 0)
+								console.log("id="+this.id+"-price="+this.price);
+								if ('pmp' == defaultbuyprice || 'costprice' == defaultbuyprice)
+								{
+									if (this.price > 0) {
+										defaultkey = this.id; defaultprice = this.price; pmppriceid = this.id; pmppricevalue = this.price;
+										//console.log("pmppricevalue="+pmppricevalue);
+									}
+								}
+							}
+							if (this.id == 'costprice')
+							{
+								// If margin is calculated on Cost price, we set it by default (but only if value is not 0)
+								console.log("id="+this.id+"-price="+this.price+"-pmppricevalue="+pmppricevalue);
+								if ('costprice' == defaultbuyprice)
+								{
+									if (this.price > 0) { defaultkey = this.id; defaultprice = this.price; costpriceid = this.id; costpricevalue = this.price; }
+									else if (pmppricevalue > 0) { defaultkey = 'pmpprice'; defaultprice = pmppricevalue; }
+								}
+							}
+							options += '<option value="'+this.id+'" price="'+this.price+'">'+this.label+'</option>';
+						});
+						options += '<option value="inputprice" price="'+defaultprice+'"><?php echo dol_escape_js($langs->trans("InputPrice").'...'); ?></option>';
+
+						console.log("finally selected defaultkey="+defaultkey+" defaultprice for buying price="+defaultprice);
+
+						$("#fournprice_predef").html(options).show();
+						if (defaultkey != '')
+						{
+							$("#fournprice_predef").val(defaultkey);
 						}
 						if (getDolGlobalString('MARGIN_TYPE') == 'pmp') {
 							print 'pmp';
