@@ -1547,7 +1547,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	}
 
 	function _getDataSituation($object, $outputlangs, $default_font_size) {
-		/* TODO - Put this function + get_taxes in Facture object, with caching mecanism */
+		/* TODO - Put this function + get_taxes in Facture object, with caching mechanism */
 
 		// Gather previous situation data
 		$object->fetchPreviousNextSituationInvoice();
