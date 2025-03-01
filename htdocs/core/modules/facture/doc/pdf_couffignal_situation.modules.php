@@ -977,46 +977,10 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		for ($i = 0; $i < $nblignes; $i++) {
 			/***** Manage taxes *****/
-			// Collecte des totaux par valeur de tva dans $this->tva["taux"]=total_tva
-			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
-			if ($prev_progress > 0) { // Compute progress from previous situation
-				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-				else $tvaligne = $this->sign * $object->lines[$i]->total_tva * ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent;
-			} else {
-				if (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) $tvaligne = $this->sign * $object->lines[$i]->multicurrency_total_tva;
-				else $tvaligne = $this->sign * $object->lines[$i]->total_tva;
-			}
-
-			$localtax1ligne = $object->lines[$i]->total_localtax1;
-			$localtax2ligne = $object->lines[$i]->total_localtax2;
-			$localtax1_rate = $object->lines[$i]->localtax1_tx;
-			$localtax2_rate = $object->lines[$i]->localtax2_tx;
-			$localtax1_type = $object->lines[$i]->localtax1_type;
-			$localtax2_type = $object->lines[$i]->localtax2_type;
-
-			if ($object->remise_percent) {
-				$tvaligne -= ($tvaligne*$object->remise_percent)/100;
-				$localtax1ligne -= ($localtax1ligne*$object->remise_percent)/100;
-				$localtax2ligne -= ($localtax2ligne*$object->remise_percent)/100;
-			}
-
-			$vatrate=(string) $object->lines[$i]->tva_tx;
-
-			// Retrieve type from database for backward compatibility with old records
-			if ((! isset($localtax1_type) || $localtax1_type=='' || ! isset($localtax2_type) || $localtax2_type=='') // if tax type not defined
-			&& (! empty($localtax1_rate) || ! empty($localtax2_rate))) { // and there is local tax
-				$localtaxtmp_array=getLocalTaxesFromRate($vatrate,0, $object->thirdparty, $mysoc);
-				$localtax1_type = $localtaxtmp_array[0];
-				$localtax2_type = $localtaxtmp_array[2];
-			}
-
-			// Retrieve global local tax
-			if ($localtax1_type && $localtax1ligne != 0) $this->localtax1[$localtax1_type][$localtax1_rate]+=$localtax1ligne;
-			if ($localtax2_type && $localtax2ligne != 0) $this->localtax2[$localtax2_type][$localtax2_rate]+=$localtax2ligne;
-
-			if (($object->lines[$i]->info_bits & 0x01) == 0x01) $vatrate .= '*';
-			if (!isset($this->tva[$vatrate])) 	$this->tva[$vatrate] = 0.0;
-			$this->tva[$vatrate] += $tvaligne;
+			$taxes = $this->get_taxes($object, $this->sign);
+			$this->tva = $taxes["tva"];
+			$this->localtax1 = $taxes["localtax1"];
+			$this->localtax2 = $taxes["localtax2"];
 
 			/**** Support for special endlines (internal) ****/
 			if ($object->lines[$i]->special_code == 10050172) {
@@ -1272,7 +1236,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		$this->atleastoneratenotnull=0;
 		if (!getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_WITHOUT_VAT')) {
-			$tvaisnull=((! empty($this->tva) && count($this->tva) == 1 && isset($this->tva['0.000']) && is_float($this->tva['0.000'])) ? true : false);
+			$tvaisnull = ((! empty($this->tva) && count($this->tva) == 1 && isset($this->tva['0.000']) && is_float($this->tva['0.000'])) ? true : false);
 			if (getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_WITHOUT_VAT_IFNULL') && $tvaisnull) {
 				// Nothing to do
 			} else {
@@ -1502,7 +1466,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$outputlangs->transnoentities("SituationSerieTotal") . ' : '. price($object->getLastSituationCompletePrice()) . ' HT',
 		);
 		if (!empty($object->projet->array_options['options_referencechantier'])) {
-			array_push($lines, $outputlangs->transnoentities("RefMarche") . ' : '. $outputlangs->convToOutputCharset($object->projet->array_options['options_referencechantier']));
+			array_unshift($lines, $outputlangs->transnoentities("RefMarche") . ' : '. $outputlangs->convToOutputCharset($object->projet->array_options['options_referencechantier']));
 		}
 		$h = 3;
 		$pdf->SetFont('','B', $default_font_size - 1);
@@ -1583,25 +1547,42 @@ class pdf_couffignal_situation extends ModelePDFFactures
 	}
 
 	function _getDataSituation($object, $outputlangs, $default_font_size) {
+		/* TODO - Put this function + get_taxes in Facture object, with caching mecanism */
+
 		// Gather previous situation data
 		$object->fetchPreviousNextSituationInvoice();
 		$TPreviousInvoice = $object->tab_previous_situation_invoice;
 		$facDerniereSituation = end($TPreviousInvoice);
 
 		// Temp vars
-		$cumul_anterieur_ht = $cumul_anterieur_tva = $retenue_garantie = 0;
+		$cumul_anterieur_ht = $retenue_garantie = 0;
 		$retenue_garantie_anterieure = 0;
 		
 		// Go over previous invoices
+		$situation_series_vat = array();
 		if (!empty($TPreviousInvoice)) {
 			foreach ($TPreviousInvoice as $fac) {
 				$cumul_anterieur_ht += $fac->total_ht;
-				$cumul_anterieur_tva += $fac->total_tva;
 				$retenue_garantie_anterieure += $fac->total_ttc * ($fac->array_options['options_retenue_garantie'] ?? 0) / 100;
+				$situation_series_vat[] = $this->get_taxes($fac, $this->sign)['tva'];
 			}
 		}
 		$nouveau_cumul = $cumul_anterieur_ht + $object->total_ht;
-		$nouveau_cumul_tva = $cumul_anterieur_tva + $object->total_tva;
+
+		// Manage VAT
+		$nouveau_tva_marginal = $this->get_taxes($object, $this->sign, true)['tva'];
+		$cumul_anterieur_tva = array();
+		$nouveau_cumul_tva = $nouveau_tva_marginal;
+		foreach ($situation_series_vat as $idx => $vat_tab) {
+			foreach ($vat_tab as $rate => $value_for_rate) {
+				// Manage cumul before this invoice
+			 	if (!isset($cumul_anterieur_tva[$rate])) 	$cumul_anterieur_tva[$rate] = 0.0;
+				$cumul_anterieur_tva[$rate] += $value_for_rate;
+				// Manage cumul inc. this invoice
+				if (!isset($nouveau_cumul_tva[$rate])) 	$nouveau_cumul_tva[$rate] = 0.0;
+				$nouveau_cumul_tva[$rate] += $value_for_rate;
+			}
+		}
 
 		// Prepare lines for recap table
 		$travaux_total = $object->totalExeptSpecialLines();
@@ -1610,10 +1591,10 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$recap_lines[] = array(
 			'name' => $outputlangs->transnoentities("Travaux"),
 			'spaceBefore' => 4,
-			'spaceAfter' => 0,
-			'Hline' => false,
+			'spaceAfter' => 4,
+			'Hline' => true,
 			'align' => 'R',
-			'fontWeight' => '',
+			'fontWeight' => 'B',
 			'fontSize' => $default_font_size - 1,
 			'values' => array(
 				'NewCumul' => price($travaux_total),
@@ -1622,28 +1603,11 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			),
 		);
 
+		$j = count($recap_lines);
+
 		// Merge/Cumul special_lines
 		$cumulated_lines_previous = $facDerniereSituation ? $facDerniereSituation->getExtractSpecialLines($outputlangs) : array();
 		$cumulated_lines_current = $object->getExtractSpecialLines($outputlangs);
-		$recap_lines[] = array(
-				'name' => $outputlangs->transnoentities("TotalHT"),
-				'spaceBefore' => 4,
-				'spaceAfter' => 0,
-				'Hline' => false,
-				'align' => 'R',
-				'fontWeight' => '',
-				'fontSize' => $default_font_size - 1,
-				'values' => array(
-					'NewCumul' => price($nouveau_cumul),
-					'PrevCumul' => price($cumul_anterieur_ht),
-					'Situation' => price($object->total_ht),
-				),
-			);
-
-		$j = count($recap_lines) - 1;
-		$recap_lines[$j]['Hline'] = true;
-		$recap_lines[$j]['spaceAfter'] = 4;
-
 		foreach ($cumulated_lines_current as $idx => $line) {
 			$name = $line['name'];
 			$total = (float) $line['amountHT'];
@@ -1663,32 +1627,54 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				),
 			);
 		}
+		$recap_lines[$j]['spaceBefore'] = 4;
 
 		$recap_lines[] = array(
-				'name' => $outputlangs->transnoentities("VAT"),
+				'name' => $outputlangs->transnoentities("TotalHT"),
 				'spaceBefore' => 0,
-				'spaceAfter' => 0,
+				'spaceAfter' => 4,
 				'Hline' => false,
 				'align' => 'R',
-				'fontWeight' => '',
+				'fontWeight' => 'B',
 				'fontSize' => $default_font_size - 1,
 				'values' => array(
-					'NewCumul' => price($nouveau_cumul_tva),
-					'PrevCumul' => price($cumul_anterieur_tva),
-					'Situation' => price($object->total_tva),
+					'NewCumul' => price($nouveau_cumul),
+					'PrevCumul' => price($cumul_anterieur_ht),
+					'Situation' => price($object->total_ht),
 				),
 			);
+
+		foreach($nouveau_cumul_tva as $tvarate => $tvaval) {
+			if ((float)$tvarate != 0) {
+				$prev_cumul_vat = array_key_exists($tvarate, $cumul_anterieur_tva) ? $cumul_anterieur_tva[$tvarate] : 0;
+				$marginal_vat = array_key_exists($tvarate, $nouveau_tva_marginal) ? $nouveau_tva_marginal[$tvarate] : 0;
+				$recap_lines[] = array(
+					'name' => $outputlangs->transnoentities("VAT") . ' ' . explode('.', $tvarate)[0] . '%',
+					'spaceBefore' => 0,
+					'spaceAfter' => 0,
+					'Hline' => false,
+					'align' => 'R',
+					'fontWeight' => '',
+					'fontSize' => $default_font_size - 1,
+					'values' => array(
+						'NewCumul' => price($tvaval),
+						'PrevCumul' => price($prev_cumul_vat),
+						'Situation' => price($marginal_vat),
+					),
+				);
+			}
+		}
 		$recap_lines[] = array(
 				'name' => $outputlangs->transnoentities("TotalTTC"),
 				'spaceBefore' => 0,
 				'spaceAfter' => 4,
 				'Hline' => 'full',
 				'align' => 'R',
-				'fontWeight' => '',
+				'fontWeight' => 'B',
 				'fontSize' => $default_font_size - 1,
 				'values' => array(
-					'NewCumul' => price($nouveau_cumul + $nouveau_cumul_tva),
-					'PrevCumul' => price($cumul_anterieur_ht + $cumul_anterieur_tva),
+					'NewCumul' => price($nouveau_cumul + array_sum($nouveau_cumul_tva)),
+					'PrevCumul' => price($cumul_anterieur_ht + array_sum($cumul_anterieur_tva)),
 					'Situation' => price($object->total_ht + $object->total_tva),
 				),
 			);
@@ -1701,8 +1687,8 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				'fontWeight' => 'B',
 				'fontSize' => $default_font_size - 1,
 				'values' => array(
-					'NewCumul' => price($nouveau_cumul + $nouveau_cumul_tva),
-					'PrevCumul' => price($cumul_anterieur_ht + $cumul_anterieur_tva),
+					'NewCumul' => price($nouveau_cumul + array_sum($nouveau_cumul_tva)),
+					'PrevCumul' => price($cumul_anterieur_ht + array_sum($cumul_anterieur_tva)),
 					'Situation' => price($object->total_ht + $object->total_tva),
 				),
 			);
@@ -2298,6 +2284,62 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 
 		return $posy;
+	}
+
+
+	/**
+	 * @param $object 			Represent the Facture object (invoice) to assess
+	 * @param $sign 			The sign of the invoice
+	 * 
+	 * @return array of 'tva', 'localtax1' and 'localtax2'
+	 */
+	public function get_taxes($object, $sign)
+	{
+		$taxes = array(
+			"tva" => array(),
+			"localtax1" => array(),
+			"localtax2" => array(),
+		);
+		$object->fetch_lines();
+		for ($i=0; $i < count($object->lines); $i++) {
+			// --- Manage VAT, sorted by VAT rate ---
+			// Grab data
+			$vatrate = $object->lines[$i]->tva_tx;
+			$line_amount_vat = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) ? $object->lines[$i]->multicurrency_total_tva : $object->lines[$i]->total_tva;
+			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
+			if ($object->lines[$i]->situation_percent > 0) {
+				$progress = ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $object->lines[$i]->situation_percent
+			} else {
+				$rogress = 0;
+			}
+
+			// Compute VAT
+			$tvaligne = $sign * $line_amount_vat * $progress;
+			if (($object->lines[$i]->info_bits & 0x01) == 0x01) 		$vatrate .= '*';
+			if (!isset($taxes['tva'][$vatrate])) 						$taxes['tva'][$vatrate] = 0.0;
+			$taxes['tva'][$vatrate] += $tvaligne;
+			
+			// --- Manage Local taxes ---
+			$localtax1ligne = $object->lines[$i]->total_localtax1;
+			$localtax2ligne = $object->lines[$i]->total_localtax2;
+			$localtax1_rate = $object->lines[$i]->localtax1_tx;
+			$localtax2_rate = $object->lines[$i]->localtax2_tx;
+			$localtax1_type = $object->lines[$i]->localtax1_type;
+			$localtax2_type = $object->lines[$i]->localtax2_type;
+
+			// Retrieve type from database for backward compatibility with old records
+			if ((! isset($localtax1_type) || $localtax1_type=='' || ! isset($localtax2_type) || $localtax2_type=='') // if tax type not defined
+			&& (! empty($localtax1_rate) || ! empty($localtax2_rate))) { // and there is local tax
+				$localtaxtmp_array = getLocalTaxesFromRate($vatrate,0, $object->thirdparty, $mysoc);
+				$localtax1_type = $localtaxtmp_array[0];
+				$localtax2_type = $localtaxtmp_array[2];
+			}
+
+			// Retrieve global local tax
+			if ($localtax1_type && $localtax1ligne != 0) $taxes['localtax1'][$localtax1_type][$localtax1_rate] += $localtax1ligne;
+			if ($localtax2_type && $localtax2ligne != 0) $taxes['localtax2'][$localtax2_type][$localtax2_rate] += $localtax2ligne;
+		}
+		return $taxes;
 	}
 
 }
