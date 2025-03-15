@@ -4374,7 +4374,9 @@ tr.liste_titre, tr.liste_titre_sel, form.liste_titre, form.liste_titre_sel, tabl
 <?php if (getDolGlobalString('MAIN_TABLELINETITLE_STICKY') { ?>
 tr.liste_titre
 {
-       position: sticky ;top: 50px; z-index:100;
+    position: sticky ;
+	top: 50px; 
+    z-index:100;
 }
 <?php } ?>
 
