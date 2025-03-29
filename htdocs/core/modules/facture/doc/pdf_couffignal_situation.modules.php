@@ -305,17 +305,24 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$fill = 0;
 
 		/* Manage SubTotal lines */
+		$tabs = 0;
 		if (class_exists('TSubtotal') && TSubtotal::isTitle($object->lines[$i])) {	
-				$labelproductservice = $object->lines[$i]->label;
-				// Clean the first numbers in the label
-				$a = preg_split('/\s+/', $labelproductservice);
-				array_shift($a);
-				$labelproductservice = '<b>' . implode(' ', $a) . '</b>';
-				$pdf->SetFillColor(233, 233, 233);
-				$posy += $h;
-				$fill = 1;
+			$labelproductservice = $object->lines[$i]->label;
+			// Clean the first numbers in the label
+			$label = preg_replace("/^[0-9] .+/", "", $labelproductservice);
+			// Manage tabulations
+			$tabs = $object->lines[$i]->qty - 1;
+			// Print
+			$labelproductservice = '<b>' . str_repeat("\t", 2 * $tabs) . $label . '</b>';
+			$pdf->SetFillColor(233, 233, 233);
+			$posy += $h;
+			$fill = 1;
+			print "YYY" . $tabs . " " . $label; 
 		} elseif (class_exists('TSubtotal') && TSubtotal::isSubtotal($object->lines[$i])) {
-			$labelproductservice = "<b>Total :</b>";
+			// Manage tabulations
+			$tabs = $object->lines[$i]->qty - 1;
+			// Print
+			$labelproductservice = "<b>" . str_repeat("\t", 2 * $tabs) . "Total :</b>";
 		} else {
 			$labelproductservice = pdf_getlinedesc($object, $i, $outputlangs, $hideref, $hidedesc, $issupplierline);
 		}
