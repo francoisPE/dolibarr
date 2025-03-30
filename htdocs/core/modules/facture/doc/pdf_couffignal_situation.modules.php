@@ -1477,7 +1477,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$h += 4;
 		}
 
-		/** Orders of projetcs */
+		/** Orders of projects */
 		$ordersTotalHt = FactureTools::getTotalHtOrdersLinkedToProjectOfInvoice($this->db, $object);
 		$linesOrders = [];
 		if (count($ordersTotalHt) > 0) {
@@ -1569,7 +1569,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$facDerniereSituation = end($TPreviousInvoice);
 
 		// Temp vars
-		$cumul_anterieur_ht = $retenue_garantie = 0;
+		$cumul_anterieur_ht = $retenue_garantie = $prorata_discount_anterieur = 0;
 		$retenue_garantie_anterieure = 0;
 		
 		// Go over previous invoices
@@ -1578,6 +1578,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			foreach ($TPreviousInvoice as $fac) {
 				$cumul_anterieur_ht += $fac->total_ht;
 				$retenue_garantie_anterieure += $fac->total_ttc * ($fac->array_options['options_retenue_garantie'] ?? 0) / 100;
+				$prorata_discount_anterieur += $fac->prorata_discount;
 				$situation_series_vat[] = $this->get_taxes($fac, $this->sign)['tva'];
 			}
 		}
@@ -1657,6 +1658,24 @@ class pdf_couffignal_situation extends ModelePDFFactures
 					'Situation' => price(round($object->total_ht, 2)), 
 				), 
 			);
+
+		$prorata_discount_cumul = $prorata_discount_anterieur + $object->prorata_discount;
+		if ($prorata_discount_cumul > 0) {
+			$recap_lines[] = array(
+				'name' => $outputlangs->transnoentities("CompteProrata"), 
+				'spaceBefore' => 0, 
+				'spaceAfter' => 4, 
+				'Hline' => false, 
+				'align' => 'R', 
+				'fontWeight' => '', 
+				'fontSize' => $default_font_size - 1, 
+				'values' => array(
+					'NewCumul' => price(round($prorata_discount_cumul, 2)), 
+					'PrevCumul' => price(round($prorata_discount_anterieur, 2)), 
+					'Situation' => price(round($object->prorata_discount, 2)), 
+				), 
+			);
+		}
 
 		foreach($nouveau_cumul_tva as $tvarate => $tvaval) {
 			if ((float)$tvarate != 0) {
