@@ -1191,13 +1191,13 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		$special_endline = $object->marginal_special_lines($outputlangs);
 
-		// Total HT
+		// Total Travaux HT
 		$index = 1;
 		$posy += $tab2_hl;
 		$tab2_top = $this->setNewPage($posy, $pdf, $object, $outputlangs);
 		$pdf->SetFillColor(255, 255, 255);
 		$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
-		$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("TotalHT"), 0, 'L', 1);
+		$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("Travaux"), 0, 'L', 1);
 		$total_ht = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1 ? $object->multicurrency_total_ht : $object->total_ht);
 		foreach ($special_endline as $i => $line) {
 			$total_ht -= $line['amountHT'];
@@ -1231,6 +1231,20 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($largcol2, $tab2_hl, price(round($this->sign * $line['amountHT'], 2), 0, $outputlangs), $useborder, 'R', 1);
 		}
+
+		// Total HT -- TODO
+		$index = 1;
+		$posy += $tab2_hl;
+		$tab2_top = $this->setNewPage($posy, $pdf, $object, $outputlangs);
+		$pdf->SetFillColor(255, 255, 255);
+		$pdf->SetXY($col1x, $tab2_top + $tab2_hl * $index);
+		$pdf->MultiCell($col2x-$col1x, $tab2_hl, $outputlangs->transnoentities("TotalHT"), 0, 'L', 1);
+		$total_ht = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1 ? $object->multicurrency_total_ht : $object->total_ht);
+		foreach ($special_endline as $i => $line) {
+			$total_ht -= $line['amountHT'];
+		}
+		$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
+		$pdf->MultiCell($largcol2, $tab2_hl, price($this->sign * ($total_ht + (! empty($object->remise)?$object->remise:0)), 0, $outputlangs), 0, 'R', 1);
 
 		// Show VAT by rates and total
 		$pdf->SetFillColor(248, 248, 248);
@@ -1577,7 +1591,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		if (!empty($TPreviousInvoice)) {
 			foreach ($TPreviousInvoice as $fac) {
 				$cumul_anterieur_ht += $fac->total_ht;
-				$retenue_garantie_anterieure += $fac->total_ttc * ($fac->array_options['options_retenue_garantie'] ?? 0) / 100;
+				$retenue_garantie_anterieure += $fac->total_ttc * ($fac->retained_warranty ?? 0) / 100;
 				$prorata_discount_anterieur += $fac->prorata_discount;
 				$situation_series_vat[] = $this->get_taxes($fac, $this->sign)['tva'];
 			}
@@ -1644,6 +1658,29 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		}
 		$recap_lines[$j]['spaceBefore'] = 4;
 
+		// Prorata
+		$prorata_discount_cumul = $prorata_discount_anterieur + $object->prorata_discount;
+		if ($prorata_discount_cumul > 0) {
+			$recap_lines[] = array(
+				'name' => $outputlangs->transnoentities("CompteProrata"), 
+				'spaceBefore' => 0, 
+				'spaceAfter' => 0, 
+				'Hline' => false, 
+				'align' => 'R', 
+				'fontWeight' => '', 
+				'fontSize' => $default_font_size - 1, 
+				'values' => array(
+					'NewCumul' => price(-round($prorata_discount_cumul, 2)), 
+					'PrevCumul' => price(-round($prorata_discount_anterieur, 2)), 
+					'Situation' => price(-round($object->prorata_discount, 2)), 
+				), 
+			);
+		}
+		// Manage prorata in Total HT
+		$nouveau_cumul_incl_prorata = $nouveau_cumul - $prorata_discount_cumul;
+		$cumul_anterieur_ht_incl_prorata = $cumul_anterieur_ht - $prorata_discount_anterieur;
+		$total_marg = $object->total_ht - $object->prorata_discount;
+
 		$recap_lines[] = array(
 				'name' => $outputlangs->transnoentities("TotalHT"), 
 				'spaceBefore' => 0, 
@@ -1653,34 +1690,17 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				'fontWeight' => 'B', 
 				'fontSize' => $default_font_size - 1, 
 				'values' => array(
-					'NewCumul' => price(round($nouveau_cumul, 2)), 
-					'PrevCumul' => price(round($cumul_anterieur_ht, 2)), 
-					'Situation' => price(round($object->total_ht, 2)), 
+					'NewCumul' => price(round($nouveau_cumul_incl_prorata, 2)), 
+					'PrevCumul' => price(round($cumul_anterieur_ht_incl_prorata, 2)), 
+					'Situation' => price(round($total_marg, 2)), 
 				), 
 			);
-
-		$prorata_discount_cumul = $prorata_discount_anterieur + $object->prorata_discount;
-		if ($prorata_discount_cumul > 0) {
-			$recap_lines[] = array(
-				'name' => $outputlangs->transnoentities("CompteProrata"), 
-				'spaceBefore' => 0, 
-				'spaceAfter' => 4, 
-				'Hline' => false, 
-				'align' => 'R', 
-				'fontWeight' => '', 
-				'fontSize' => $default_font_size - 1, 
-				'values' => array(
-					'NewCumul' => price(round($prorata_discount_cumul, 2)), 
-					'PrevCumul' => price(round($prorata_discount_anterieur, 2)), 
-					'Situation' => price(round($object->prorata_discount, 2)), 
-				), 
-			);
-		}
 
 		foreach($nouveau_cumul_tva as $tvarate => $tvaval) {
 			if ((float)$tvarate != 0) {
 				$prev_cumul_vat = array_key_exists($tvarate, $cumul_anterieur_tva) ? $cumul_anterieur_tva[$tvarate] : 0;
 				$marginal_vat = array_key_exists($tvarate, $nouveau_tva_marginal) ? $nouveau_tva_marginal[$tvarate] : 0;
+				// Nota: $this->get_taxes manage prorata for VAT natively
 				$recap_lines[] = array(
 					'name' => $outputlangs->transnoentities("VAT") . ' ' . explode('.', $tvarate)[0] . '%', 
 					'spaceBefore' => 0, 
@@ -1697,6 +1717,11 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				);
 			}
 		}
+
+		// Include prorata in TTC 
+		$ttc_cumul = array_sum($nouveau_cumul_tva) + $nouveau_cumul_incl_prorata;
+		$ttc_anter = array_sum($cumul_anterieur_tva) + $cumul_anterieur_ht_incl_prorata;
+		$ttc_marg = array_sum($nouveau_tva_marginal) + $total_marg;
 		$recap_lines[] = array(
 				'name' => $outputlangs->transnoentities("TotalTTC"), 
 				'spaceBefore' => 0, 
@@ -1706,11 +1731,36 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				'fontWeight' => 'B', 
 				'fontSize' => $default_font_size - 1, 
 				'values' => array(
-					'NewCumul' => price(round($nouveau_cumul + array_sum($nouveau_cumul_tva), 2)), 
-					'PrevCumul' => price(round($cumul_anterieur_ht + array_sum($cumul_anterieur_tva), 2)), 
-					'Situation' => price(round($object->total_ht + $object->total_tva, 2)), 
+					'NewCumul' => price(round($ttc_cumul, 2)), 
+					'PrevCumul' => price(round($ttc_anter, 2)), 
+					'Situation' => price(round($ttc_marg, 2)), 
 				), 
 			);
+
+		// Warranty discount
+		$marg_warranty = $object->total_ttc * ($object->retained_warranty ?? 0) / 100;
+		$retenue_garantie_cumul = $retenue_garantie_anterieure + $marg_warranty;
+		if ($retenue_garantie_cumul > 0) {
+			$recap_lines[] = array(
+				'name' => $outputlangs->transnoentities("WarrantyDiscount"), 
+				'spaceBefore' => 4, 
+				'spaceAfter' => 0, 
+				'Hline' => false, 
+				'align' => 'R', 
+				'fontWeight' => '', 
+				'fontSize' => $default_font_size - 1, 
+				'values' => array(
+					'NewCumul' => price(-round($retenue_garantie_cumul, 2)), 
+					'PrevCumul' => price(-round($retenue_garantie_anterieure, 2)), 
+					'Situation' => price(-round($marg_warranty, 2)), 
+				), 
+			);
+		}
+		// Manage Retained warranty in TTC
+		$ttc_cumul_incl_warranty = $ttc_cumul - $retenue_garantie_cumul;
+		$ttc_anter_incl_warranty = $ttc_anter - $retenue_garantie_anterieure;
+		$ttc_marg_incl_warranty = $ttc_marg - $marg_warranty;
+
 		$recap_lines[] = array(
 				'name' => $outputlangs->transnoentities("BtpTotalSituationTTC"), 
 				'spaceBefore' => 3, 
@@ -1720,9 +1770,9 @@ class pdf_couffignal_situation extends ModelePDFFactures
 				'fontWeight' => 'B', 
 				'fontSize' => $default_font_size - 1, 
 				'values' => array(
-					'NewCumul' => price(round($nouveau_cumul + array_sum($nouveau_cumul_tva), 2)), 
-					'PrevCumul' => price(round($cumul_anterieur_ht + array_sum($cumul_anterieur_tva), 2)), 
-					'Situation' => price(round($object->total_ht + $object->total_tva, 2)), 
+					'NewCumul' => price(round($ttc_cumul_incl_warranty, 2)), 
+					'PrevCumul' => price(round($ttc_anter_incl_warranty, 2)), 
+					'Situation' => price(round($ttc_marg_incl_warranty, 2)), 
 				), 
 			);
 		$recap_lines[] = array(
@@ -2334,6 +2384,10 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			"localtax2" => array(), 
 		);
 		$object->fetch_lines();
+		// Manage prorata on VAT
+		if ($object->total_ht > 0) {
+			$prorata_effective_rate = ($object->total_ht - $object->prorata_discount) / $object->total_ht;
+		}
 		for ($i=0; $i < count($object->lines); $i++) {
 			// --- Manage VAT, sorted by VAT rate ---
 			// Grab data
@@ -2347,7 +2401,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			}
 
 			// Compute VAT
-			$tvaligne = $sign * $line_amount_vat * $progress;
+			$tvaligne = $sign * $line_amount_vat * $progress * $prorata_effective_rate;
 			if (($object->lines[$i]->info_bits & 0x01) == 0x01) 		$vatrate .= '*';
 			if (!isset($taxes['tva'][$vatrate])) 						$taxes['tva'][$vatrate] = 0.0;
 			$taxes['tva'][$vatrate] += $tvaligne;
