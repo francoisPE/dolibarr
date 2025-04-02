@@ -1183,7 +1183,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			$pdf->SetXY($col2x, $tab2_top + $tab2_hl * $index);
 			$pdf->MultiCell($largcol2, $tab2_hl, $line['values']['Situation'], 0, 'R', 1);
 		}
-		$total_ttc = $recap_lines['TotalTTC']['values']['Situation'];
+		$total_ttc = $this->recap_lines['TotalTTC']['values']['Situation'];
 
 		$pdf->SetTextColor(0, 0, 0);
 
