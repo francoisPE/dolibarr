@@ -451,6 +451,10 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			return 1;
 		}
 
+		if (!$object->project) {
+			$object->fetch_project();
+		}
+
 		/*** Lang init ***/
 		if (! is_object($outputlangs)) $outputlangs=$langs;
 		// For backward compatibility with FPDF, force output charset to ISO, because FPDF expect text to be encoded in ISO
