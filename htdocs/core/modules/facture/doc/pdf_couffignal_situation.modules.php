@@ -1190,7 +1190,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		$creditnoteamount=$object->getSumCreditNotesUsed();
 		$depositsamount=$object->getSumDepositsUsed();
 		//print "x".$creditnoteamount."-".$depositsamount;exit;
-		$resteapayer = price2num($total_ttc - $deja_regle - $creditnoteamount - $depositsamount, 'MT');
+		$resteapayer = price2num(price2num($total_ttc) - $deja_regle - $creditnoteamount - $depositsamount, 'MT');
 		if ($object->paye) $resteapayer=0;
 
 		// Already paid + Deposits
@@ -2280,7 +2280,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			if ($object->lines[$i]->situation_percent > 0) {
 				$progress = ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $object->lines[$i]->situation_percent
 			} else {
-				$rogress = 0;
+				$progress = 0;
 			}
 
 			// Compute VAT
