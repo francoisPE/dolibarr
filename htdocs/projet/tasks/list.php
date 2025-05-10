@@ -382,6 +382,7 @@ $sql .= " LEFT JOIN llx_element_element AS pee ON (pee.fk_source = propal.rowid 
 $sql .= " LEFT JOIN (select fk_source as peefs, max(fk_target) as peeft FROM llx_element_element WHERE sourcetype='commande' and targettype='facture' GROUP BY fk_source ) peef ON pee.fk_target = peef.>
 $sql .= " LEFT JOIN (select fk_source as peeps , max(fk_target) as peept FROM llx_element_element WHERE sourcetype='propal' and targettype='facture' GROUP BY fk_source ) peep ON propal.rowid = peep.pe>
 $sql .= " LEFT JOIN llx_facture as fact  ON fact.rowid=peef.peeft OR fact.rowid=peep.peept OR fact.rowid is null";
+$sql .= " LEFT JOIN llx_extralistcomp_propal as ext ON ext.rowid = propal.fk_statut";
 // END OF DIRTY
 
 if ($search_project_user > 0) {
