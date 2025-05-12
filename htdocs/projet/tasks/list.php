@@ -383,13 +383,14 @@ $sql .= " LEFT JOIN (select fk_source as peefs, max(fk_target) as peeft FROM llx
 $sql .= " LEFT JOIN (select fk_source as peeps , max(fk_target) as peept FROM llx_element_element WHERE (sourcetype='propal' and targettype='facture') GROUP BY fk_source ) peep ON pee.rowid = peep.peeps ";
 $sql .= " LEFT JOIN llx_facture as fact ON fact.rowid=peef.peeft OR fact.rowid=peep.peept OR fact.rowid is null OR fact.ref_client LIKE concat('%',ef.refexpertise,'%')";
 $sql .= " LEFT JOIN llx_extralistcomp_propal as extprop ON extprop.rowid = propal.fk_statut";
-
+/**
 $sql .= " LEFT JOIN llx_commande_fournisseur as cdefourn ON t.fk_projet = cdefourn.fk_projet AND cdefourn.ref_supplier LIKE concat('%',ef.reffranchise,'%')";
 $sql .= " LEFT JOIN llx_element_element AS cee ON (cee.fk_source = cdefourn.rowid AND cee.targettype='invoice_supplier'AND cee.sourcetype='order_supplier' ) or (cee.fk_target = cdefourn.rowid AND cee.targettype='order_supplier' AND cee.sourcetype='invoice_supplier' )";
 $sql .= " LEFT JOIN (select fk_source as ceefs, max(fk_target) as ceeft FROM llx_element_element WHERE (sourcetype='order_supplier' and targettype='invoice_supplier') GROUP BY fk_source ) ceef ON cee.rowid = ceef.ceefs ";
 //$sql .= " LEFT JOIN (select fk_source as ceeps , max(fk_target) as ceept FROM llx_element_element WHERE sourcetype='propal' and targettype='facture' GROUP BY fk_source ) ceep ON cdefourn.rowid = ceep.ceeps ";
 $sql .= " LEFT JOIN llx_facture_fourn as factfourn  ON factfourn.rowid=ceef.ceeft OR factfourn.rowid is null OR factfourn.ref_supplier LIKE concat('%',ef.reffranchise,'%'";
 $sql .= " LEFT JOIN llx_extralistcomp_commande as extcde ON extcde.rowid = cdefourn.fk_statut ";
+**/
 // END OF DIRTY
 
 if ($search_project_user > 0) {
