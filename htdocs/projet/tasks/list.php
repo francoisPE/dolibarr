@@ -379,17 +379,17 @@ if (isset($extrafields->attributes[$object->table_element]['label']) && is_array
 // FULLY DIRTY BUT WORKING - PATAS MODULE NOT WORKING HERE
 $sql .= " LEFT JOIN llx_propal as propal ON t.fk_projet = propal.fk_projet AND propal.ref_client LIKE concat('%',ef.refexpertise,'%')";
 //$sql .= " LEFT JOIN llx_element_element AS pee ON (pee.fk_source = propal.rowid AND pee.sourcetype='propal' AND pee.targettype='commande' ) or (pee.fk_target = propal.rowid AND pee.targettype='propal' AND pee.sourcetype='commande' )";
-$sql .= " LEFT JOIN (select fk_source as peefs, max(fk_target) as peeft FROM llx_element_element WHERE (sourcetype='commande' and targettype='facture') OR (targettype='commande' and sourcetype='facture') GROUP BY fk_source ) peef ON propal.rowid = peef.peefs ";
-$sql .= " LEFT JOIN (select fk_source as peeps , max(fk_target) as peept FROM llx_element_element WHERE (sourcetype='propal' and targettype='facture') OR (targettype='commande' and sourcetype='facture') GROUP BY fk_source ) peep ON propal.rowid = peep.peeps ";
+$sql .= " LEFT JOIN (select fk_source as peefs, max(fk_target) as peeft FROM llx_element_element WHERE (sourcetype='commande' and targettype='facture') GROUP BY fk_source ) peef ON propal.rowid = peef.peefs ";
+$sql .= " LEFT JOIN (select fk_source as peeps , max(fk_target) as peept FROM llx_element_element WHERE (sourcetype='propal' and targettype='facture') GROUP BY fk_source ) peep ON propal.rowid = peep.peeps ";
 $sql .= " LEFT JOIN llx_facture as fact ON fact.rowid=peef.peeft OR fact.rowid=peep.peept OR fact.rowid is null OR fact.ref_client LIKE concat('%',ef.refexpertise,'%')";
-$sql .= " LEFT JOIN llx_extralistcomp_propal as extprop ON extprop.rowid = cdefourn.fk_statut";
+$sql .= " LEFT JOIN llx_extralistcomp_propal as extprop ON extprop.rowid = propal.fk_statut";
 
-$sql .= " LEFT JOIN llx_commande_fournisseur as cdefourn ON t.fk_projet = cdefourn.fk_projet AND cdefourn.ref_client LIKE concat('%',ef.reffranchise,'%')";
+$sql .= " LEFT JOIN llx_commande_fournisseur as cdefourn ON t.fk_projet = cdefourn.fk_projet AND cdefourn.ref_supplier LIKE concat('%',ef.reffranchise,'%')";
 //$sql .= " LEFT JOIN llx_element_element AS cee ON (cee.fk_source = cdefourn.rowid AND cee.targettype='invoice_supplier'AND cee.sourcetype='order_supplier' ) or (cee.fk_target = cdefourn.rowid AND cee.targettype='order_supplier' AND cee.sourcetype='invoice_supplier' )";
-$sql .= " LEFT JOIN (select fk_source as ceefs, max(fk_target) as ceeft FROM llx_element_element WHERE (sourcetype='order_supplier' and targettype='invoice_supplier') OR (targettype='order_supplier' and sourcetype='invoice_supplier') GROUP BY fk_source ) ceef ON cdefourn.rowid = ceef.ceefs ";
-//$sql .= " LEFT JOIN (select fk_source as ceeps , max(fk_target) as ceept FROM llx_element_element WHERE sourcetype='propal' and targettype='facture' GROUP BY fk_source ) ceep ON propal.rowid = ceep.ceeps ";
-$sql .= " LEFT JOIN llx_facture_fourn as factfourn  ON factfourn.rowid=ceef.ceeft OR factfourn.rowid is null OR factfourn.ref_client LIKE concat('%',ef.reffranchise,'%'";
-$sql .= " LEFT JOIN llx_extralistcomp_commande as extcde ON extcde.rowid = cdefourn.fk_statut";
+$sql .= " LEFT JOIN (select fk_source as ceefs, max(fk_target) as ceeft FROM llx_element_element WHERE (sourcetype='order_supplier' and targettype='invoice_supplier') GROUP BY fk_source ) ceef ON cdefourn.rowid = ceef.ceefs ";
+//$sql .= " LEFT JOIN (select fk_source as ceeps , max(fk_target) as ceept FROM llx_element_element WHERE sourcetype='propal' and targettype='facture' GROUP BY fk_source ) ceep ON cdefourn.rowid = ceep.ceeps ";
+$sql .= " LEFT JOIN llx_facture_fourn as factfourn  ON factfourn.rowid=ceef.ceeft OR factfourn.rowid is null OR factfourn.ref_supplier LIKE concat('%',ef.reffranchise,'%'";
+$sql .= " LEFT JOIN llx_extralistcomp_commande as extcde ON extcde.rowid = cdefourn.fk_statut ";
 // END OF DIRTY
 
 if ($search_project_user > 0) {
