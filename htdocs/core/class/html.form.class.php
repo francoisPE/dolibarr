@@ -9247,7 +9247,7 @@ class Form
 	 * @param 	array 			$excludelinksto 	Do not show links of this type, for exemple array('order') or array('supplier_order'). null or array() if no exclusion.
 	 * @return  string                              HTML block
 	 */
-	public function showLinkToObjectBlock($object, $restrictlinksto = array(), $excludelinksto = array())
+	public function showLinkToObjectBlock($object, $restrictlinksto = array(), $excludelinksto = array(), $same_project_filter = false)
 	{
 		global $conf, $langs, $hookmanager;
 		global $action;
@@ -9278,8 +9278,9 @@ class Form
 
 			// Enable a per project filter
 			function project_filter($label, $fk) {
+				global $same_project_filter;
 				$project_filter = '';
-				if (($fk > 0) && getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO')) {
+				if (($fk > 0) && getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO') && $same_project_filter) {
 					$filter = 'fk_projet';
 					if ($label == 'mo' || $label == 'ticket') {
 						$filter = 'fk_project';
@@ -9476,8 +9477,14 @@ class Form
 		}
 
 		if ($linktoelemlist) {
-			// <input type="checkbox" name="sameproject" selected>Même chantier</input>
-			$linktoelem = '
+			$linktoelem = '';
+			if (getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO')) { // && local_var_post
+				$linktoelem .= '
+				<form action="#sameprojectfilter" method="post" id="sameprojectform">
+				<input type="checkbox" id="sameproject" name="sameproject" '.($same_project_filter ? 'checked' : '').'>'.$langs->trans("SameProject").'</input></form>';
+				// Add post var to the filter fuction
+			}
+			$linktoelem .= '
 			<dl class="dropdown" id="linktoobjectname">
     		';
 			if (!empty($conf->use_javascript_ajax)) {
@@ -9505,6 +9512,17 @@ class Form
 				});
 				</script>
 		    ';
+		    if (getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO')) {
+		    	print '<!-- Add js to toggle link filtering on project box -->
+				<script nonce="' . getNonce() . '">
+				jQuery(document).ready(function() {
+					jQuery("#sameproject").change(function() {
+						jQuery("#sameprojectform").submit();
+					});
+				});
+				</script>
+		    ';
+		    }
 		}
 
 		return $linktoelem;
