@@ -9251,6 +9251,7 @@ class Form
 	{
 		global $conf, $langs, $hookmanager;
 		global $action;
+		global $same_project_filter;
 
 		$linktoelem = '';
 		$linktoelemlist = '';
@@ -9278,9 +9279,9 @@ class Form
 
 			// Enable a per project filter
 			function project_filter($label, $fk) {
-				global $same_project_filter;
 				$project_filter = '';
-				if (($fk > 0) && getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO') && $same_project_filter) {
+				global $same_project_filter;
+				if (($fk > 0) && getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO') && (isset($same_project_filter) && $same_project_filter)) {
 					$filter = 'fk_projet';
 					if ($label == 'mo' || $label == 'ticket') {
 						$filter = 'fk_project';
@@ -9480,9 +9481,8 @@ class Form
 			$linktoelem = '';
 			if (getDolGlobalString('FILTER_ON_SAME_PROJECT_IN_LINKTO')) { // && local_var_post
 				$linktoelem .= '
-				<form action="#sameprojectfilter" method="post" id="sameprojectform">
+				<form action="#sameprojectfilter" method="post" id="sameprojectform" style="display: inline">
 				<input type="checkbox" id="sameproject" name="sameproject" '.($same_project_filter ? 'checked' : '').'>'.$langs->trans("SameProject").'</input></form>';
-				// Add post var to the filter fuction
 			}
 			$linktoelem .= '
 			<dl class="dropdown" id="linktoobjectname">
