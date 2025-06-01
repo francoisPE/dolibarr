@@ -1691,8 +1691,8 @@ while ($i < $imaxinloop) {
 		}
         // Description
         if (!empty($arrayfields['p.description']['checked'])) {
-                print '<td title="'.dol_escape_htmltag($obj->description).'">';
-                print dol_escape_htmltag($obj->description);
+                print '<td title="'.dolPrintHTML($obj->description).'">';
+                print dolPrintHTML($obj->description);
                 print '</td>';
                 if (!$i) {
                         $totalarray['nbfield']++;
