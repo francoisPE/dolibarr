@@ -1189,7 +1189,8 @@ if (!empty($arrayfields['p.title']['checked'])) {
 // Project description
 if (!empty($arrayfields['p.description']['checked'])) {
 	print '<td class="liste_titre">';
-	print '<input type="text" class="flat" name="search_label" size="8" value="'.dol_escape_htmltag($search_label).'">';
+	//search_description to be coded
+	//print '<input type="text" class="flat" name="search_description" size="8" value="'.dol_escape_htmltag($search_description).'">';
 	print '</td>';
 }
 // Third party
