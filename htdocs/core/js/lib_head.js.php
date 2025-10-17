@@ -1334,7 +1334,7 @@ jQuery(document).ready(function() {
 			right = 10;
 		}
 		parentholder.toggleClass("open");
-		parentholder.children(".dropdown-content").css({"right": right+"px", "left": "auto"});
+		parentholder.children(".dropdown-content").css({"right": right+"px", "left": "auto", "position": "revert"});
 	});
 });
 
