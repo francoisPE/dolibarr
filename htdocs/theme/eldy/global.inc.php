@@ -1552,7 +1552,11 @@ table.paymenttable td.amountpaymentcomplete, table.paymenttable td.amountremaint
 }*/
 /* Style used for most tables */
 .div-table-responsive, .div-table-responsive-no-min {
-	overflow-x: auto;
+<?php if (getDolGlobalString('MAIN_TABLELINETITLE_STICKY')) { 
+    echo "overflow: initial !important;" ;
+	} else {	
+	echo "overflow-x: auto;" ;
+} ?>
 	min-height: 0.01%;
 }
 .div-table-responsive {
