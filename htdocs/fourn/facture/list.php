@@ -482,6 +482,12 @@ $reshook = $hookmanager->executeHooks('printFieldListFrom', $parameters, $object
 $sql .= $hookmanager->resPrint;
 $sql .= ' WHERE f.fk_soc = s.rowid';
 $sql .= ' AND f.entity IN ('.getEntity('facture_fourn').')';
+
+//en attendant de creer un system d'exclusion avec group et extrafield
+if ($user->id != 94)  { $sql .= " AND f.fk_soc NOT IN (1157, 1368, 113, 1131, 1294, 1154, 119)"; }
+if ($user->id != 94 AND $user->id != 96 )  { $sql .= " AND f.fk_soc NOT IN (994, 1114, 1218, 122, 131, 1112, 1201, 1132, 1223, 130, 1230, 1268, 161, 1086, 101)"; }
+if ($user->id != 94 AND $user->id != 96 )  { $sql .= " AND f.fk_soc NOT IN (1237, 1336, 1183, 1380, 160)"; }
+
 if ($socid > 0) {
 	$sql .= ' AND s.rowid = '.((int) $socid);
 }
