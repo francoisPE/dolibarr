@@ -564,6 +564,12 @@ $parameters = array();
 $reshook = $hookmanager->executeHooks('printFieldListFrom', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
 $sql .= $hookmanager->resPrint;
 $sql .= " WHERE s.entity IN (".getEntity('societe').")";
+
+//en attendant mieux
+if ($user->id != 94)  { $sql .= " AND s.rowid NOT IN (1157, 1368, 113, 1131, 1294, 1154, 119)"; }
+if ($user->id != 94 AND $user->id != 96 )  { $sql .= " AND s.rowid NOT IN (994, 1114, 1218, 122, 131, 1112, 1201, 1132, 1223, 130, 1230, 1268, 161, 1086, 101)"; }
+if ($user->id != 94 AND $user->id != 96 )  { $sql .= " AND s.rowid NOT IN (1237, 1336, 1183, 1380, 160)"; }
+
 //if (empty($user->rights->societe->client->voir) && (empty($conf->global->MAIN_USE_ADVANCED_PERMS) || empty($user->rights->societe->client->readallthirdparties_advance)) && !$socid)	$sql .= " AND s.rowid = sc.fk_soc AND sc.fk_user = ".((int) $user->id);
 if (!$user->hasRight('societe', 'client', 'voir') && !$socid) {
 	$sql .= " AND s.rowid = sc.fk_soc AND sc.fk_user = ".((int) $user->id);
