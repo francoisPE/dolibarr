@@ -1552,11 +1552,7 @@ table.paymenttable td.amountpaymentcomplete, table.paymenttable td.amountremaint
 }*/
 /* Style used for most tables */
 .div-table-responsive, .div-table-responsive-no-min {
-<?php if (getDolGlobalString('MAIN_TABLELINETITLE_STICKY')) { 
-    echo "overflow: initial !important;" ;
-	} else {	
-	echo "overflow-x: auto;" ;
-} ?>
+	overflow-x: auto;
 	min-height: 0.01%;
 }
 .div-table-responsive {
@@ -1564,11 +1560,7 @@ table.paymenttable td.amountpaymentcomplete, table.paymenttable td.amountremaint
 }
 /* Style used for full page tables with field selector and no content after table (priority before previous for such tables) */
 div.fiche>form>div.div-table-responsive, div.fiche>form>div.div-table-responsive-no-min {
-<?php if (getDolGlobalString('MAIN_TABLELINETITLE_STICKY')) { 
-    echo "overflow: initial !important;" ;
-	} else {	
-	echo "overflow-x: auto;" ;
-} ?>
+	overflow-x: auto;
 }
 div.fiche>form>div.div-table-responsive {
 	min-height: 392px;
@@ -4376,14 +4368,6 @@ tr.liste_titre, tr.liste_titre_sel, form.liste_titre, form.liste_titre_sel, tabl
 {
 	height: 26px !important;
 }
-<?php if (getDolGlobalString('MAIN_TABLELINETITLE_STICKY')) { ?>
-echo "tr.liste_titre" ;
-echo "{" ;
-echo "    position: sticky ;" ;
-echo "	  top: 100px; " ;
-echo "    z-index:200;" ;
-echo "}" ;
-<?php } ?>
 
 div.colorback	/* for the form "assign user" on time spent view */
 {
@@ -5045,11 +5029,6 @@ table.table-fiche-title .col-title div.titre, .col-right .btnTitle-icon {
 }
 table.table-fiche-title {
 	margin-bottom: 12px;
-<?php if (getDolGlobalString('MAIN_TABLELINETITLE_STICKY')) { ?>
-echo "    position: sticky ;" ;
-echo "	  top: 50px; " ;
-echo "    z-index:100;" ;
-<?php } ?>
 }
 
 
