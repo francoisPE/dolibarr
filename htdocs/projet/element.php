@@ -721,8 +721,6 @@ if ($action == "addelement") {
 
 $elementuser = new User($db);
 
-
-
 $showdatefilter = 0;
 // Show the filter on date on top of element list
 if (!$showdatefilter) {
@@ -745,6 +743,227 @@ if (!$showdatefilter) {
 
 	$showdatefilter++;
 }
+
+
+// COUFFIGNAL ADD-ON
+// Sample data: nodes and links arrays
+require_once DOL_DOCUMENT_ROOT.'/couffignal/ProjectNodeView.php';
+
+$seeds = ProjectNodeView::getCycleSeeds($db, $object, $listofreferent['invoice'], $dates, $datee);
+
+$nodes = [];
+$links = [];
+foreach ($seeds as $seed) {
+	// Initialize invoice nodes and links
+	$inv_nodes = ProjectNodeView::loadInvoicesNodes($seed, $links);
+	
+	// Add Orders nodes
+	$order_nodes = ProjectNodeView::loadOrdersNodes($inv_nodes, $links);
+
+	// Add Supplier_invoices
+	$su_inv_nodes = ProjectNodeView::loadSupplierInvoicesNodes($inv_nodes, $links);
+
+	// Add Supplier_orders
+	$su_order_nodes = ProjectNodeView::loadSupplierOrdersNodes($su_inv_nodes, $links);
+
+	// Concat nodes
+	$nodes = array_merge($nodes, $inv_nodes, $order_nodes, $su_inv_nodes, $su_order_nodes);
+}
+
+// Missing : Manage 2 series, and add empty nodes
+$unlinked_objects = [];
+
+// Concat & clean nodes
+$nodes = array_merge($nodes, $unlinked_objects);
+$filterExcludeKeys = fn($arr) => array_diff_key($arr, array_flip(['obj']));
+
+// Clean links
+$links = array_map("unserialize", array_unique(array_map("serialize", $links))); 
+
+// Encode data as JSON for JS
+$nodesJson = json_encode(array_map($filterExcludeKeys, array_values($nodes)));
+$linksJson = json_encode(array_values($links));
+?>
+
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+	#mynetwork {
+	    width: 100%;
+	    min-height: 300px;  /* keep minimum height */
+	    height: 600px;       /* height relative to viewport */
+	    border: 1px solid lightgray;
+	    margin: 10px;
+	    position: relative;
+	}
+    /* Custom tooltip styles */
+    #customTooltip {
+	    position: fixed;
+		pointer-events: none;
+		background: rgba(255, 255, 255, 0.75);
+		border: solid black 1px;
+		padding: 6px 10px;
+		border-radius: 4px;
+		font-size: 15px;
+		max-width: 250px;
+		z-index: 10;
+		display: none;
+		white-space: pre-wrap;
+		transition: opacity 0.15s ease-in-out;
+		opacity: 0;
+	}
+
+	#customTooltip.show {
+	    opacity: 1;
+	}
+</style>
+
+<h3><?php echo $langs->trans('GraphVisualizationTitle');?></h3>
+<div id="mynetwork"></div>
+<!-- Custom tooltip container -->
+<div id="customTooltip"></div>
+
+<script type="text/javascript">
+    const colorMap = {
+        "facture": "#a23121",
+        "order": "#65953d",
+        "supplier_invoice": "#6059af",
+        "supplier_order": "#599caf",
+    };
+
+    const rawNodes = <?php echo $nodesJson; ?>;
+    const edges = new vis.DataSet(<?php echo $linksJson; ?>);
+
+    // Add color and keep tooltip attribute as is
+    const nodesWithColor = rawNodes.map(node => {
+        return {
+            ...node,
+            color: {
+                background: colorMap[node.type] || "#CCCCCC",
+                border: '#000000'
+            }
+            // We do NOT set title here since we use custom tooltip instead
+        };
+    });
+
+    const nodes = new vis.DataSet(nodesWithColor);
+
+    const container = document.getElementById('mynetwork');
+    const data = {
+        nodes: nodes,
+        edges: edges
+    };
+
+    const options = {
+        nodes: {
+            shape: 'dot',
+            size: 16,
+            font: {
+                size: 14,
+                color: '#000'
+            },
+            borderWidth: 2
+        },
+        edges: {
+            width: 2,
+            color: '#888',
+            arrows: {
+                to: { enabled: true, scaleFactor: 0.5 }
+            }
+        },
+        physics: {
+            enabled: true,
+            stabilization: true
+        },
+        interaction: {
+            hover: true,
+            tooltipDelay: 100 // still good to keep for native tooltips fallback off
+        }
+    };
+
+    const network = new vis.Network(container, data, options);
+
+    // Allow display to change and grow if needed
+    network.once('stabilizationIterationsDone', function () {
+	    network.stopSimulation();
+
+	    // Get bounding box of all nodes and edges
+	    const boundingBox = network.getBoundingBox();
+
+	    // Calculate new height with some padding
+	    const newHeight = boundingBox.bottom - boundingBox.top + 40; // 40px padding
+
+	    // Set the container height dynamically
+	    container.style.height = newHeight + 'px';
+
+	    // Explicitly set the network canvas size to match container
+	    network.setSize('100%', newHeight + 'px');
+
+	    // Redraw network so it fits the new container size
+	    network.redraw();
+	});
+
+    const tooltip = document.getElementById('customTooltip');
+
+    // Show custom tooltip on hoverNode event
+    network.on("hoverNode", function(params) {
+	    const node = nodes.get(params.node);
+	    if (node.tooltip) {
+	        tooltip.innerHTML = node.tooltip;
+	        tooltip.classList.add('show');
+	        tooltip.style.display = 'block'; // keep for accessibility fallback
+	    }
+	});
+
+    // Hide tooltip when no longer hovering a node
+	network.on("blurNode", function() {
+	    tooltip.classList.remove('show');
+	    tooltip.style.display = 'none';
+	});
+
+    // Move tooltip with mouse pointer
+	container.addEventListener('mousemove', function(event) {
+	    if (tooltip.style.display === 'block') {
+	        const rect = container.getBoundingClientRect();
+	        const tooltipWidth = tooltip.offsetWidth;
+	        const tooltipHeight = tooltip.offsetHeight;
+	        const offset = 15;
+
+	        // Calculate desired position relative to viewport (clientX/Y are viewport-relative)
+	        let left = event.clientX + offset;
+	        let top = event.clientY + offset;
+
+	        // Clamp right edge to window width
+	        if (left + tooltipWidth > window.innerWidth) {
+	            left = event.clientX - tooltipWidth - offset;
+	            if (left < 0) left = 0; // prevent negative left
+	        }
+
+	        // Clamp bottom edge to window height
+	        if (top + tooltipHeight > window.innerHeight) {
+	            top = event.clientY - tooltipHeight - offset;
+	            if (top < 0) top = 0; // prevent negative top
+	        }
+
+	        // Set tooltip position in viewport coordinates (absolute)
+	        tooltip.style.left = left + 'px';
+	        tooltip.style.top = top + 'px';
+	    }
+	});
+
+
+    // Click event to open node link if present
+    network.on("click", function(params) {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            const node = nodes.get(nodeId);
+            if (node.link) {
+                window.open(node.link, '_blank');
+            }
+        }
+    });
+</script>
+
+<?php
 
 
 
