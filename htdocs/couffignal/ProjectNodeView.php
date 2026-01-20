@@ -18,6 +18,30 @@ if (!isModEnabled('clientpayfourn')) {
  */
 class ProjectNodeView
 {
+	// Types supported by ProjectNodeView::loadNode()
+	const MANAGED_ELEMENTS = [
+			'Commande' => [
+				'custom_ref_attr' => 'ref_client', 
+				'color' => '#65953d', 
+				'link' => '/commande/card.php?id='
+			], 
+			'Facture' => [
+				'custom_ref_attr' => 'ref_client',
+				'color' => '#a23121', 
+				'link' => '/compta/facture/card.php?facid='
+			], 
+			'CommandeFournisseur' => [
+				'custom_ref_attr' => 'ref_supplier', 
+				'color' => '#599caf', 
+				'link' => '/fourn/commande/card.php?id='
+			], 
+			'FactureFournisseur' => [
+				'custom_ref_attr' => 'ref_supplier', 
+				'color' => '#6059af', 
+				'link' => '/fourn/facture/card.php?facid=',
+			]
+		]; 
+
 	/**
 	 * Get the seeds - the starting point of the invoicing cycles - present in the project
 	 *
@@ -40,12 +64,38 @@ class ProjectNodeView
 			$inv = new Facture($db);
 			$inv->fetch($id);
 			if ($inv->is_first()) {
+				// To support
 				$inv->fetchPreviousNextSituationInvoice();
 				$seeds[] = $inv;
 			}
 		}
 
 		return $seeds;
+	}
+
+
+	/**
+	 * Load a Node from its representing object
+	 *
+	 * @param Object Facture|FactureFournisseur|Commande|CommandeFournisseur $obj
+	 * 
+	 * @return array Array representing a node
+	 */
+	public static function loadNode(Facture|FactureFournisseur|Commande|CommandeFournisseur $obj): array
+	{
+		if (array_key_exists(get_class($obj), self::MANAGED_ELEMENTS)) {
+			$k = get_class($obj);
+			$custom_ref_attr = self::MANAGED_ELEMENTS[$k]['custom_ref_attr'];
+			return [
+			        'id' => $obj->ref,
+			        'label' => $obj->ref . ' - ' . $obj->$custom_ref_attr,
+			        'obj' => $obj,
+			        'type' => $k,
+			    	'link' => self::MANAGED_ELEMENTS[$k]['link'].$obj->id,
+				    'tooltip' => $obj->getNomUrl(1),
+				];
+		}
+		return [];
 	}
 
 
@@ -62,14 +112,7 @@ class ProjectNodeView
 		// Initialize invoice nodes with invoices
 		$inv_nodes = [];
 		foreach (array_merge([$seed], $seed->tab_next_situation_invoice) as $inv) {
-		    $inv_nodes[$inv->ref] = [
-		        'id' => $inv->ref,
-		        'label' => $inv->ref . ' - ' . $inv->ref_client,
-		        'obj' => $inv,
-		        'type' => 'facture',
-		    	'link' => '/compta/facture/card.php?facid='.$inv->id,
-			    'tooltip' => $inv->getNomUrl(1),
-			];
+		    $inv_nodes[$inv->ref] = self::loadNode($inv);
 		}
 		
 		// Initialize links between nodes
@@ -103,14 +146,7 @@ class ProjectNodeView
 			$orders = FactureTools::getTotalHtOrdersLinkedToInvoice($db, $node['obj'], True);
 			// Add new nodes
 			foreach ($orders as $o) {
-			    $order_nodes[$o['obj']->ref] = [
-			        'id' => $o['obj']->ref,
-			        'label' => $o['obj']->ref . ' - ' . $o['obj']->ref_client,
-			        'obj' => $o['obj'],
-			        'type' => 'order',
-			        'link' => '/commande/card.php?id='.$o['obj']->id,
-			        'tooltip' => $o['obj']->getNomUrl(1),
-			    ];
+			    $order_nodes[$o['obj']->ref] = self::loadNode($o['obj']);
 				// Create links 
 			    $o['obj']->fetchObjectLinked();
 			    foreach ($o['obj']->linkedObjects['facture'] as $id => $facture) {
@@ -143,14 +179,7 @@ class ProjectNodeView
 
 			// Add new nodes
 			foreach ($su_invs as $su_i) {
-			    $su_inv_nodes[$su_i->ref] = [
-			        'id' => $su_i->ref,
-			        'label' => $su_i->ref . ' - ' . $su_i->ref_supplier,
-			        'obj' => $su_i,
-			        'type' => 'supplier_invoice',
-			        'link' => '/fourn/facture/card.php?facid='.$su_i->id,
-			        'tooltip' => $su_i->getNomUrl(1),
-			    ];
+			    $su_inv_nodes[$su_i->ref] = self::loadNode($su_i);
 				// Create links 
 				$links[] = [
 		            'from' => $node['id'],
@@ -178,14 +207,7 @@ class ProjectNodeView
 			$su_orders = FactureFournisseurTools::getOrdersValidatedFromFacturesFourn([$node['obj']]);
 			// Add new nodes
 			foreach ($su_orders as $o) {
-			    $su_order_nodes[$o->ref] = [
-			        'id' => $o->ref,
-			        'label' => $o->ref . ' - ' . $o->ref_supplier,
-			        'obj' => $o,
-			        'type' => 'supplier_order',
-			        'link' => '/fourn/commande/card.php?id='.$o->id,
-			        'tooltip' => $o->getNomUrl(1),
-			    ];
+			    $su_order_nodes[$o->ref] = self::loadNode($o);
 				// Create links 
 			    $o->fetchObjectLinked();
 			    foreach ($o->linkedObjects['invoice_supplier'] as $id => $su_inv) {

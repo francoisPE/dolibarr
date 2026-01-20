@@ -748,6 +748,8 @@ if (!$showdatefilter) {
 // COUFFIGNAL ADD-ON
 // Sample data: nodes and links arrays
 require_once DOL_DOCUMENT_ROOT.'/couffignal/ProjectNodeView.php';
+// Utils
+$filterExcludeKeys = fn($arr) => array_diff_key($arr, array_flip(['obj']));
 
 $seeds = ProjectNodeView::getCycleSeeds($db, $object, $listofreferent['invoice'], $dates, $datee);
 
@@ -771,19 +773,32 @@ foreach ($seeds as $seed) {
 }
 
 // Missing : Manage 2 series, and add empty nodes
-$unlinked_objects = [];
+$unlinked_nodes = [];
+foreach ($listofreferent as $key => $properties) {
+	if (in_array($properties['class'], array_keys(ProjectNodeView::MANAGED_ELEMENTS))) {
+		$list_ids = $object->get_element_list($key, $properties['table'], $properties['datefieldname'], $dates, $datee, 'fk_projet');
+		foreach ($list_ids as $k => $id) {
+			$obj = new $properties['class']($db);
+			$obj->fetch($id);
+			$unlinked_nodes[] = ProjectNodeView::loadNode($obj);
+		}
+	}
+}
 
 // Concat & clean nodes
-$nodes = array_merge($nodes, $unlinked_objects);
-$filterExcludeKeys = fn($arr) => array_diff_key($arr, array_flip(['obj']));
+$nodes = array_merge($nodes, $unlinked_nodes);
+$nodes_wo_obj = array_map($filterExcludeKeys, array_values($nodes));
+$clean_unique_nodes = array_map("unserialize", array_unique(array_map("serialize", $nodes_wo_obj))); 
 
 // Clean links
 $links = array_map("unserialize", array_unique(array_map("serialize", $links))); 
 
 // Encode data as JSON for JS
-$nodesJson = json_encode(array_map($filterExcludeKeys, array_values($nodes)));
+$nodesJson = json_encode(array_values($clean_unique_nodes));
 $linksJson = json_encode(array_values($links));
+$colorJson = json_encode(array_combine(array_keys(ProjectNodeView::MANAGED_ELEMENTS), array_map(fn($v) => $v['color'], ProjectNodeView::MANAGED_ELEMENTS)));
 ?>
+
 
 <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
@@ -823,12 +838,7 @@ $linksJson = json_encode(array_values($links));
 <div id="customTooltip"></div>
 
 <script type="text/javascript">
-    const colorMap = {
-        "facture": "#a23121",
-        "order": "#65953d",
-        "supplier_invoice": "#6059af",
-        "supplier_order": "#599caf",
-    };
+    const colorMap = <?php echo $colorJson; ?>;
 
     const rawNodes = <?php echo $nodesJson; ?>;
     const edges = new vis.DataSet(<?php echo $linksJson; ?>);
