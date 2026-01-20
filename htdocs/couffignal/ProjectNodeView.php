@@ -96,7 +96,7 @@ class ProjectNodeView
 	 * 
 	 * @return array List of Orders nodes (Commande)
 	 */
-	public static function loadOrdersNodes(array $inv_nodes, array &$links): array
+	public static function loadOrdersNodes(DoliDB $db, array $inv_nodes, array &$links): array
 	{
 		$order_nodes = [];
 		foreach ($inv_nodes as $i => $node) {
@@ -134,7 +134,7 @@ class ProjectNodeView
 	 * 
 	 * @return array List of Supplier Invoices nodes (FactureFournisseur)
 	 */
-	public static function loadSupplierInvoicesNodes(array $inv_nodes, array &$links): array
+	public static function loadSupplierInvoicesNodes(DoliDB $db, array $inv_nodes, array &$links): array
 	{
 		$su_inv_nodes = [];
 		foreach ($inv_nodes as $i => $node) {

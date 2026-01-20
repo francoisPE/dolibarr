@@ -758,10 +758,10 @@ foreach ($seeds as $seed) {
 	$inv_nodes = ProjectNodeView::loadInvoicesNodes($seed, $links);
 	
 	// Add Orders nodes
-	$order_nodes = ProjectNodeView::loadOrdersNodes($inv_nodes, $links);
+	$order_nodes = ProjectNodeView::loadOrdersNodes($db, $inv_nodes, $links);
 
 	// Add Supplier_invoices
-	$su_inv_nodes = ProjectNodeView::loadSupplierInvoicesNodes($inv_nodes, $links);
+	$su_inv_nodes = ProjectNodeView::loadSupplierInvoicesNodes($db, $inv_nodes, $links);
 
 	// Add Supplier_orders
 	$su_order_nodes = ProjectNodeView::loadSupplierOrdersNodes($su_inv_nodes, $links);
