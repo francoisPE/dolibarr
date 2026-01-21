@@ -5732,8 +5732,6 @@ if ($action == 'create') {
 					}
 					if (class_exists('FactureFournisseur') && $invoice->type == FactureFournisseur::TYPE_STANDARD) {
 						$compensated_amount += $obj->amount_ttc;
-						$resteapayeraffiche -= $compensated_amount;
-						$resteapayer -= $compensated_amount;
 					}
 				}
 			} else {

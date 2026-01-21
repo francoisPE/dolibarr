@@ -772,7 +772,7 @@ foreach ($seeds as $seed) {
 	$nodes = array_merge($nodes, $inv_nodes, $order_nodes, $su_inv_nodes, $su_order_nodes);
 }
 
-// Missing : Manage 2 series, and add empty nodes
+// Missing : Refacto
 $unlinked_nodes = [];
 foreach ($listofreferent as $key => $properties) {
 	if (in_array($properties['class'], array_keys(ProjectNodeView::MANAGED_ELEMENTS))) {
