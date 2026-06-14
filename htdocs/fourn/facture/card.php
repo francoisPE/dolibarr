@@ -1858,7 +1858,7 @@ if (empty($reshook)) {
 		}
 
 		$action = '';
-	} elseif ($action == 'classin' && $usercancreate) {
+    } elseif ($action == 'classin' && ($usercancreate || (getDolGlobalString('MAIN_FACTUREFOURN_VALIDATE_SUPERSEED_CREATE') && $permissiontoadd ))) {
 		$object->fetch($id);
 		$result = $object->setProject($projectid);
 	} elseif ($action == 'confirm_edit' && $confirm == 'yes' && $usercancreate) {
