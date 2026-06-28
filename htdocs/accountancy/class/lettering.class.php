@@ -386,7 +386,7 @@ class Lettering extends BookKeeping
 		$sql .= " lettering_code = NULL";
 		$sql .= ", date_lettering = NULL";
 		$sql .= " WHERE rowid IN (".$this->db->sanitize(implode(',', $ids)).")";
-		$sql .= " AND subledger_account != ''";
+        $sql.= " AND (subledger_account != '' OR numero_compte IN ".getDolGlobalString('ACCOUNTING_LIST_TO_LETTER')." ) ;";
 
 		dol_syslog(get_class($this)."::update", LOG_DEBUG);
 		$resql = $this->db->query($sql);
