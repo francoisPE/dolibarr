@@ -145,6 +145,7 @@ $permissiondellink = $usercancreate; // Used by the include of actions_dellink.i
 $permissiontoedit = $usercancreate; // Used by the include of actions_lineupdown.inc.php
 $permissiontoadd = $usercancreate; // Used by the include of actions_addupdatedelete.inc.php and actions_lineupdown.inc.php
 $permissiontodelete = $usercandelete;
+if (getDolGlobalString('MAIN_FACTUREFOURN_VALIDATE_SUPERSEED_CREATE')) {$permissiontoadd = $usercanvalidate or $usercancreate ; } else { $permissiontoadd = $usercancreate; }
 
 $error = 0;
 
@@ -1930,7 +1931,7 @@ if (empty($reshook)) {
 		}
 
 		$action = '';
-	} elseif ($action == 'classin' && $usercancreate) {
+	} elseif ($action == 'classin' && ($usercancreate || (getDolGlobalString('MAIN_FACTUREFOURN_VALIDATE_SUPERSEED_CREATE') && $permissiontoadd ))) {
 		$object->fetch($id);
 		$result = $object->setProject($projectid);
 	} elseif ($action == 'confirm_edit' && $confirm == 'yes' && $usercancreate) {
@@ -2023,6 +2024,7 @@ if (empty($reshook)) {
 	// Actions to build doc
 	$upload_dir = $conf->fournisseur->facture->dir_output;
 	$permissiontoadd = $usercancreate;
+    if (getDolGlobalString('MAIN_FACTUREFOURN_VALIDATE_SUPERSEED_CREATE')) {$permissiontoadd = $usercanvalidate or $usercancreate ; } else { $permissiontoadd = $usercancreate; }
 	include DOL_DOCUMENT_ROOT.'/core/actions_builddoc.inc.php';
 
 	// Make calculation according to calculationrule
