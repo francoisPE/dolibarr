@@ -357,7 +357,7 @@ if ($result) {
 			$prorata_discount = $prorata_rate * $obj->total_ht * $situation_ratio;	
 			$tabprorata[$obj->rowid][$compta_soc] += $prorata_discount;
 			$total_ttc -= $prorata_discount; // Remove ht value for prorata
-			$total_ttc -= ($obj->total_tva * $situation_ratio ); // VAT manage later below
+			// VAT manage later below
 		}
 
 		$tabttc[$obj->rowid][$compta_soc] += $total_ttc;
