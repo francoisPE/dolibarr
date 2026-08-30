@@ -357,7 +357,8 @@ if ($result) {
 			$prorata_discount = $prorata_rate * $obj->total_ht * $situation_ratio;	
 			$tabprorata[$obj->rowid][$compta_soc] += $prorata_discount;
 			$total_ttc -= $prorata_discount; // Remove ht value for prorata
-			$total_ttc -= ($obj->total_tva * $situation_ratio * $prorata_rate); // Remove VAT value corresponding to prorata
+			$total_ttc -= ($obj->total_tva * $situation_ratio * $prorata_rate); // VAT manage later below
+			//$total_ttc -= ($obj->total_tva * $situation_ratio * $prorata_rate); // Remove VAT value corresponding to prorata
 		}
 
 		$tabttc[$obj->rowid][$compta_soc] += $total_ttc;
@@ -456,6 +457,22 @@ if ($result) {
 	dol_print_error($db);
 }
 
+// TVA prorata
+$objecttmp = new Facture($db);
+$objecttmp->fetch($obj->rowid);
+$objecttmp->fetch_optionals();
+$tvaprorata =$objecttmp->tvaOnProrata() ;
+$to_tva = array( &$tabtva, &$tabttc);
+$compt_tva=0; // pas terrible !
+foreach ($to_tva as &$tab) {
+     $compt_tva+=1;
+     foreach ($tab as $invoice => $accounts) {
+        foreach ($accounts as $label => $value) {
+            if ($compt_tva==1) $tab[$invoice][$label] -= $tvaprorata ;
+            if ($compt_tva==2) $tab[$invoice][$label] += $tvaprorata ;
+        }
+    }
+}
 
 $errorforinvoice = array();
 
