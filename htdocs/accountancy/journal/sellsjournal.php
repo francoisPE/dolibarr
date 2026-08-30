@@ -330,7 +330,7 @@ if ($result) {
 		}
 
 		// Move a part of the retained warrenty into the account of warranty
-		if (getDolGlobalString('INVOICE_USE_RETAINED_WARRANTY') && $obj->retained_warranty > 0) {
+		if (getDolGlobalString('INVOICE_USE_RETAINED_WARRANTY') && $obj->retained_warranty != 0) {
 			$retained_warranty = (float) price2num($total_ttc * $obj->retained_warranty / 100, 'MT');	// Calculate the amount of warrenty for this line (using the percent value)
 			$tabwarranty[$obj->rowid][$compta_soc] += $retained_warranty;
 			$total_ttc -= $retained_warranty;
