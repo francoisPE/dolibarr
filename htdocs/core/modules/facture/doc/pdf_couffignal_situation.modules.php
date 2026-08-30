@@ -992,13 +992,13 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		// Store every page tab_height for clean grid display
 		$tab_height_in_page = array();
 
-		for ($i = 0; $i < $nblignes; $i++) {
-			/***** Manage taxes *****/
-			$taxes = $this->get_taxes($object, $this->sign);
-			$this->tva = $taxes["tva"];
-			$this->localtax1 = $taxes["localtax1"];
-			$this->localtax2 = $taxes["localtax2"];
+		/***** Manage taxes *****/
+		$taxes = $this->get_taxes($object, $this->sign);
+		$this->tva = $taxes["tva"];
+		$this->localtax1 = $taxes["localtax1"];
+		$this->localtax2 = $taxes["localtax2"];
 
+		for ($i = 0; $i < $nblignes; $i++) {
 			/**** Support for special endlines (internal) ****/
 			if ($object->lines[$i]->special_code == 10050172) {
 				// Only ensure proper VAT management
@@ -2274,36 +2274,44 @@ class pdf_couffignal_situation extends ModelePDFFactures
 			"localtax1" => array(), 
 			"localtax2" => array(), 
 		);
-		$object->fetch_lines();
-		// Manage prorata on VAT
-		$prorata_effective_rate = 1;
-		if ($object->total_ht != 0) {
-			$prorata_effective_rate = ($object->total_ht - $object->prorata_discount) / $object->total_ht;
-		}
-		for ($i=0; $i < count($object->lines); $i++) {
-			// --- Manage VAT, sorted by VAT rate ---
-			// Grab data
-			$vatrate = $object->lines[$i]->tva_tx;
-			$line_amount_vat = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) ? $object->lines[$i]->multicurrency_total_tva : $object->lines[$i]->total_tva;
-			$prev_progress = $object->lines[$i]->get_prev_progress($object->id);
-			if ($object->lines[$i]->situation_percent > 0) {
-				$progress = ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $object->lines[$i]->situation_percent
-			} else {
-				$progress = 0;
-			}
+        $object->fetch_lines();
+        // Manage prorata on VAT
+        $prorata_effective_rate = 1;
+        for ($i=0; $i < count($object->lines); $i++) {
+             if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($object->lines[$i])) && $object->lines[$i]->special_code != 10050172 ) {
+                   $previousprogress=0;
+                   if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
+                        $previousprogress = $object->lines[$i]->get_Prev_Progress($object->lines[$i]->fk_facture) / 100;
+                   }
+                   $totaltvaprorata += $object->lines[$i]->total_ht * (1-$previousprogress) ;
+             }
+         }
+         if ($totaltvaprorata != 0) {
+              $prorata_effective_rate = ($totaltvaprorata - $object->prorata_discount) / $totaltvaprorata;
+         }
+         for ($i=0; $i < count($object->lines); $i++) {
+               // --- Manage VAT, sorted by VAT rate ---
+               // Grab data
+               $vatrate = $object->lines[$i]->tva_tx;
+               $line_amount_vat = (isModEnabled('multicurrency') && $object->multicurrency_tx != 1) ? $object->lines[$i]->multicurrency_total_tva : $object->lines[$i]->total_tva;
+               $prev_progress = $object->lines[$i]->get_prev_progress($object->id);
+               if ($object->lines[$i]->situation_percent > 0) {
+                      $progress = ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $object>
+               } else {
+                      $progress = 0;
+               }
+               // Compute VAT
 
-			// Compute VAT
-			$tvaligne = $sign * $line_amount_vat * $progress * $prorata_effective_rate;
-			if ($object->lines[$i]->situation_percent == 0 && $prev_progress > 0) {
-                 $tmp_totline = ($object->lines[$i]->qty * $object->lines[$i]->subprice) *$object->lines[$i]->tva_tx/100 ;
-                 $tvaligne = -1 * $sign * $tmp_totline * $prev_progress/100 * $prorata_effective_rate;
-            }
-			
-			if (($object->lines[$i]->info_bits & 0x01) == 0x01) 		$vatrate .= '*';
-			if (!isset($taxes['tva'][$vatrate])) 						$taxes['tva'][$vatrate] = 0.0;
-			$taxes['tva'][$vatrate] += $tvaligne;
-			
-			// --- Manage Local taxes ---
+               $tvaligne = $sign * $line_amount_vat * $progress * ($prorata_effective_rate * ($object->lines[$i]->special_code != 10050172) );
+               if ($object->lines[$i]->situation_percent == 0 && $prev_progress > 0) {
+                   $tmp_totline = ($object->lines[$i]->qty * $object->lines[$i]->subprice) *$object->lines[$i]->tva_tx/100 ;
+                   $tvaligne = -1 * $sign * $tmp_totline * $prev_progress/100 * $prorata_effective_rate;
+                }
+
+                if (($object->lines[$i]->info_bits & 0x01) == 0x01)             $vatrate .= '*';
+                if (!isset($taxes['tva'][$vatrate]))                                            $taxes['tva'][$vatrate] = 0.0;
+                $taxes['tva'][$vatrate] += $tvaligne;
+            // --- Manage Local taxes ---
 			$localtax1ligne = $object->lines[$i]->total_localtax1;
 			$localtax2ligne = $object->lines[$i]->total_localtax2;
 			$localtax1_rate = $object->lines[$i]->localtax1_tx;
