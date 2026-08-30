@@ -357,8 +357,7 @@ if ($result) {
 			$prorata_discount = $prorata_rate * $obj->total_ht * $situation_ratio;	
 			$tabprorata[$obj->rowid][$compta_soc] += $prorata_discount;
 			$total_ttc -= $prorata_discount; // Remove ht value for prorata
-			$total_ttc -= ($obj->total_tva * $situation_ratio * $prorata_rate); // VAT manage later below
-			//$total_ttc -= ($obj->total_tva * $situation_ratio * $prorata_rate); // Remove VAT value corresponding to prorata
+			$total_ttc -= ($obj->total_tva * $situation_ratio ); // VAT manage later below
 		}
 
 		$tabttc[$obj->rowid][$compta_soc] += $total_ttc;
@@ -370,7 +369,7 @@ if ($result) {
 				$tablocaltax1[$obj->rowid][$compta_localtax1] += $obj->total_localtax1;
 				$tablocaltax2[$obj->rowid][$compta_localtax2] += $obj->total_localtax2;
 			} else {
-				$tabtva[$obj->rowid][$compta_tva] += $obj->total_tva * $situation_ratio * (1 - $prorata_rate);
+				$tabtva[$obj->rowid][$compta_tva] += $obj->total_tva * $situation_ratio; // VAT manage later below
 				$tablocaltax1[$obj->rowid][$compta_localtax1] += $obj->total_localtax1 * $situation_ratio;
 				$tablocaltax2[$obj->rowid][$compta_localtax2] += $obj->total_localtax2 * $situation_ratio;
 			}
