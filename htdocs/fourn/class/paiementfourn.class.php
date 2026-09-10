@@ -249,7 +249,10 @@ class PaiementFourn extends Paiement
 
 		$this->db->begin();
 
-		if ($totalamount != 0) { // On accepte les montants negatifs
+		if (($totalamount != 0) || (getDolGlobalString('PAYMENT_ALLOW_0_FOR_REPRISEACOMPTE'))) { // On accepte les montants negatifs
+			if ($totalamount == 0) {
+				setEventMessages($langs->trans("ErrorTotalIsNull"), null, 'warnings');
+			}
 			$ref = $this->getNextNumRef(is_object($thirdparty) ? $thirdparty : '');
 
 			if ($way == 'dolibarr') {
