@@ -466,16 +466,16 @@ foreach ($to_tva as &$tab) {
         $objecttmp->fetch($invoice);
         $objecttmp->fetch_optionals();
         $tvaprorata =$objecttmp->tvaOnProrata() ;
-        foreach ($accounts as $label => $value) {
+        $totaltva=0;
+    	foreach ($accounts as $label => $value) {
             if (preg_match("/4457/", $label)) $totaltva += $value ;
         }
-		 foreach ($accounts as $label => $value) {
-            if (preg_match("/4457/", $label)) $tab[$invoice][$label] -= $tab[$invoice][$label] / $totaltva * $tvaprorata ;
+		foreach ($accounts as $label => $value) {
+            if (preg_match("/4457/", $label)) { if ($totaltva <> 0 ) { $tab[$invoice][$label] -= $tab[$invoice][$label] / $totaltva * $tvaprorata; } else { $tab[$invoice][$label] -= $tvaprorata ;}}
             if (preg_match("/411/", $label)) $tab[$invoice][$label] -= $tvaprorata ;
         }
     }
 }
-
 // Round prorata and TVA to cents
 if (getDolGlobalString('ROUND_IN_ACCOUNTING')) {
 	$to_round = array(&$tabprorata, &$tabtva, &$tabht, &$tabttc);
