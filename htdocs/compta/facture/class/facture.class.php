@@ -2641,15 +2641,20 @@ class Facture extends CommonInvoice
         $this->fetch_lines();
         for ($i=0; $i < count($this->lines); $i++) {
              if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($this->lines[$i])) && $this->lines[$i]->special_code != 10050171 ) {
-                   $previousprogress=0;
-                   if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
-                       $previousprogress = $this->lines[$i]->get_Prev_Progress($this->lines[$i]->fk_facture) / 100;
-                   }
-              $totalHTwospecialcode += $this->lines[$i]->total_ht * (1-$previousprogress) ;
-              $totalTVA += $this->lines[$i]->tva_tx /100 * $this->lines[$i]->total_ht * (1-$previousprogress) ;
+                  $prev_progress = $this->lines[$i]->get_Prev_Progress($this->lines[$i]->fk_facture);
+                  if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
+                      if ($this->lines[$i]->situation_percent > 0) {
+                            $progress = ($this->lines[$i]->situation_percent - $prev_progress) / $this->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $obje>
+                      } else {
+                            $progress = 0;
+                      }
+                  }
+              	  $totalHTwospecialcode += $this->lines[$i]->total_ht * $progress  ;
+                  $totalTVA += $this->lines[$i]->tva_tx /100 * $this->lines[$i]->total_ht * $progress  ;
               }
          }
-         return round($this->prorata_discount * $totalTVA/$totalHTwospecialcode, 2);
+        if ($totalHTwospecialcode !=0) { $tvaonprorata=$this->prorata_discount * $totalTVA/$totalHTwospecialcode; } else {$tvaonprorata=0;}
+        return round($tvaonprorata, 2);
     }
 
 	/**
