@@ -1000,7 +1000,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
 
 		for ($i = 0; $i < $nblignes; $i++) {
 			/**** Support for special endlines (internal) ****/
-			if ($object->lines[$i]->special_code == 10050172) {
+			if ($object->lines[$i]->special_code == 10050172 || $object->lines[$i]->special_code == 10050171) {
 				// Only ensure proper VAT management
 				continue;
 			}
@@ -2278,7 +2278,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
         // Manage prorata on VAT
         $prorata_effective_rate = 1;
         for ($i=0; $i < count($object->lines); $i++) {
-             if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($object->lines[$i])) && $object->lines[$i]->special_code != 10050172 ) {
+             if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($object->lines[$i])) && $object->lines[$i]->special_code != 10050171 ) {
                    $previousprogress=0;
                    if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
                         $previousprogress = $object->lines[$i]->get_Prev_Progress($object->lines[$i]->fk_facture) / 100;
@@ -2301,7 +2301,7 @@ class pdf_couffignal_situation extends ModelePDFFactures
                       $progress = 0;
                }
                // Compute VAT
-               if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($object->lines[$i])) && $object->lines[$i]->special_code != 10050172 ) {
+               if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($object->lines[$i])) && $object->lines[$i]->special_code != 10050171 ) {
                     $prorata_effective_ratei = $prorata_effective_rate ;
                 } else {
                     $prorata_effective_ratei = 1 ;
