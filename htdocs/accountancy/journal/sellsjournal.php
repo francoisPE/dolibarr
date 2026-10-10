@@ -467,7 +467,10 @@ foreach ($to_tva as &$tab) {
         $objecttmp->fetch_optionals();
         $tvaprorata =$objecttmp->tvaOnProrata() ;
         foreach ($accounts as $label => $value) {
-            if (preg_match("/4457/", $label)) $tab[$invoice][$label] -= $tvaprorata ;
+            if (preg_match("/4457/", $label)) $totaltva += $value ;
+        }
+		 foreach ($accounts as $label => $value) {
+            if (preg_match("/4457/", $label)) $tab[$invoice][$label] -= $tab[$invoice][$label] / $totaltva * $tvaprorata ;
             if (preg_match("/411/", $label)) $tab[$invoice][$label] -= $tvaprorata ;
         }
     }
