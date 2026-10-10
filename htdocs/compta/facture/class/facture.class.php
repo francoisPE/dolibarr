@@ -2700,9 +2700,10 @@ class Facture extends CommonInvoice
 		foreach ($this->getSpecialLines() as $k => $line) {
 			$name = $outputlangs->convToOutputCharset($line->description);
 			$product_id = $line->fk_product;
+			$prev_progress=$line->get_Prev_Progress($line->fk_facture) / 100;
 			if (array_key_exists($product_id, $result)) {
-				$result[$product_id]['amountHT'] = $result[$product_id]['amountHT'] + $line->total_ht;
-				$result[$product_id]['amountTTC'] = $result[$product_id]['amountTTC'] + $line->total_ttc;
+				$result[$product_id]['amountHT'] = $result[$product_id]['amountHT'] + $line->total_ht * (1-$prev_progress);
+				$result[$product_id]['amountTTC'] = $result[$product_id]['amountTTC'] + $line->total_ttc * (1-$prev_progress);
 			} else {
 				$result[$product_id] = array(
 					'name' => $name,
