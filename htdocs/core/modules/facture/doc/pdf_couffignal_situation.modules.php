@@ -2276,14 +2276,18 @@ class pdf_couffignal_situation extends ModelePDFFactures
 		);
         $object->fetch_lines();
         // Manage prorata on VAT
-        $prorata_effective_rate = 1;
+        $totaltvaprorata =0;
         for ($i=0; $i < count($object->lines); $i++) {
              if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($object->lines[$i])) && $object->lines[$i]->special_code != 10050171 ) {
-                   $previousprogress=0;
-                   if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
-                        $previousprogress = $object->lines[$i]->get_Prev_Progress($object->lines[$i]->fk_facture) / 100;
-                   }
-                   $totalwospecialcode += $object->lines[$i]->total_ht * (1-$previousprogress) ;
+                    $prev_progress = $object->lines[$i]->get_prev_progress($object->id);
+                    if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
+                        if ($object->lines[$i]->situation_percent > 0) {
+                                $progress = ($object->lines[$i]->situation_percent - $prev_progress) / $object->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $obje>
+                        } else {
+                                $progress = 0;
+                        }
+                	}
+                    $totalwospecialcode += $object->lines[$i]->total_ht * $progress  ;
              }
          }
          if ($totalwospecialcode != 0) {
