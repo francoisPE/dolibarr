@@ -2700,16 +2700,21 @@ class Facture extends CommonInvoice
 		foreach ($this->getSpecialLines() as $k => $line) {
 			$name = $outputlangs->convToOutputCharset($line->description);
 			$product_id = $line->fk_product;
-			$prev_progress=$line->get_Prev_Progress($line->fk_facture) / 100;
+			$prev_progress=$line->get_Prev_Progress($line->fk_facture) ;
+            if ($line->situation_percent > 0) {
+                $progress = ($line->situation_percent - $prev_progress) / $line->situation_percent; // TODO - Control, here another formula was used, dividing by $obje>
+            } else {
+                $progress = 0;
+            }
 			if (array_key_exists($product_id, $result)) {
-				$result[$product_id]['amountHT'] = $result[$product_id]['amountHT'] + $line->total_ht * (1-$prev_progress);
-				$result[$product_id]['amountTTC'] = $result[$product_id]['amountTTC'] + $line->total_ttc * (1-$prev_progress);
+				$result[$product_id]['amountHT'] = $result[$product_id]['amountHT'] + $line->total_ht * $progress;
+				$result[$product_id]['amountTTC'] = $result[$product_id]['amountTTC'] + $line->total_ttc * $progress;
 			} else {
 				$result[$product_id] = array(
 					'name' => $name,
-					'amountHT' => $line->total_ht,
+					'amountHT' => $line->total_ht * $progress,
 					'TVA' => (string) round($line->tva_tx, 1) . '%',
-					'amountTTC' => $line->total_ttc,
+					'amountTTC' => $line->total_ttc * $progress,
 				);
 			}
 		}
