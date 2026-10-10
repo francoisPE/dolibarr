@@ -2551,7 +2551,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172 && $line->special_code != 10050171 ) {
 				// Compute the line price if progress is 100%
 				$totalIfCompleted += ($line->qty * $line->subprice) * (100 - $line->remise_percent) / 100 ;
 			}
@@ -2619,7 +2619,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172 && $line->special_code != 10050171) {
 				$total += $line->total_ht ;
 			}
 		}
@@ -2640,7 +2640,7 @@ class Facture extends CommonInvoice
         {
         $this->fetch_lines();
         for ($i=0; $i < count($this->lines); $i++) {
-             if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($this->lines[$i])) && $this->lines[$i]->special_code != 10050172 ) {
+             if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($this->lines[$i])) && $this->lines[$i]->special_code != 10050171 ) {
                    $previousprogress=0;
                    if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
                        $previousprogress = $this->lines[$i]->get_Prev_Progress($this->lines[$i]->fk_facture) / 100;
@@ -2677,7 +2677,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if ($line->special_code == 10050172) {
+			if ($line->special_code == 10050172 || $line->special_code != 10050171) {
 				$result[] = $line;
 			}
 		}
@@ -2756,7 +2756,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172 && $line->special_code != 10050171) {
 				// Compute the line price if progress is 100%
 				$totalAvancement += $line->total_ht;
 			}
