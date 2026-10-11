@@ -2551,7 +2551,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172 && $line->special_code != 10050171 ) {
 				// Compute the line price if progress is 100%
 				$totalIfCompleted += ($line->qty * $line->subprice) * (100 - $line->remise_percent) / 100 ;
 			}
@@ -2619,7 +2619,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172 && $line->special_code != 10050171) {
 				$total += $line->total_ht ;
 			}
 		}
@@ -2636,15 +2636,26 @@ class Facture extends CommonInvoice
 	public function tvaOnProrata()
 	{
 		global $conf;
-
-		if ($this->total_ht != 0) {
-			$avg_vat_rate = $this->total_tva / $this->total_ht;
-		} else {
-			$avg_vat_rate = 0;
-		}
-
-		return round($this->prorata_discount * $avg_vat_rate, 2);
-	}
+       public function tvaOnProrata()
+        {
+        $this->fetch_lines();
+        for ($i=0; $i < count($this->lines); $i++) {
+             if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($this->lines[$i])) && $this->lines[$i]->special_code != 10050171 ) {
+                  $prev_progress = $this->lines[$i]->get_Prev_Progress($this->lines[$i]->fk_facture);
+                  if (getDolGlobalInt('INVOICE_USE_SITUATION') !=0) {
+                      if ($this->lines[$i]->situation_percent > 0) {
+                            $progress = ($this->lines[$i]->situation_percent - $prev_progress) / $this->lines[$i]->situation_percent; // TODO - Control, here another formula was used, dividing by $obje>
+                      } else {
+                            $progress = 0;
+                      }
+                  }
+              	  $totalHTwospecialcode += $this->lines[$i]->total_ht * $progress  ;
+                  $totalTVA += $this->lines[$i]->tva_tx /100 * $this->lines[$i]->total_ht * $progress  ;
+              }
+         }
+        if ($totalHTwospecialcode !=0) { $tvaonprorata=$this->prorata_discount * $totalTVA/$totalHTwospecialcode; } else {$tvaonprorata=0;}
+        return round($tvaonprorata, 2);
+    }
 
 	/**
 	 * Provide the "BTP" TTC: TTC - prorata - VAT on prorata - retained warranty
@@ -2671,7 +2682,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if ($line->special_code == 10050172) {
+			if ($line->special_code == 10050172 || $line->special_code != 10050171) {
 				$result[] = $line;
 			}
 		}
@@ -2694,15 +2705,21 @@ class Facture extends CommonInvoice
 		foreach ($this->getSpecialLines() as $k => $line) {
 			$name = $outputlangs->convToOutputCharset($line->description);
 			$product_id = $line->fk_product;
+			$prev_progress=$line->get_Prev_Progress($line->fk_facture) ;
+            if ($line->situation_percent > 0) {
+                $progress = ($line->situation_percent - $prev_progress) / $line->situation_percent; // TODO - Control, here another formula was used, dividing by $obje>
+            } else {
+                $progress = 0;
+            }
 			if (array_key_exists($product_id, $result)) {
-				$result[$product_id]['amountHT'] = $result[$product_id]['amountHT'] + $line->total_ht;
-				$result[$product_id]['amountTTC'] = $result[$product_id]['amountTTC'] + $line->total_ttc;
+				$result[$product_id]['amountHT'] = $result[$product_id]['amountHT'] + $line->total_ht * $progress;
+				$result[$product_id]['amountTTC'] = $result[$product_id]['amountTTC'] + $line->total_ttc * $progress;
 			} else {
 				$result[$product_id] = array(
 					'name' => $name,
-					'amountHT' => $line->total_ht,
+					'amountHT' => $line->total_ht * $progress,
 					'TVA' => (string) round($line->tva_tx, 1) . '%',
-					'amountTTC' => $line->total_ttc,
+					'amountTTC' => $line->total_ttc * $progress,
 				);
 			}
 		}
@@ -2750,7 +2767,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172) {
+			if (!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($line) && $line->special_code != 10050172 && $line->special_code != 10050171) {
 				// Compute the line price if progress is 100%
 				$totalAvancement += $line->total_ht;
 			}

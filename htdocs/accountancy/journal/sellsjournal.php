@@ -357,7 +357,7 @@ if ($result) {
 			$prorata_discount = $prorata_rate * $obj->total_ht * $situation_ratio;	
 			$tabprorata[$obj->rowid][$compta_soc] += $prorata_discount;
 			$total_ttc -= $prorata_discount; // Remove ht value for prorata
-			$total_ttc -= ($obj->total_tva * $situation_ratio * $prorata_rate); // Remove VAT value corresponding to prorata
+			// VAT manage later below
 		}
 
 		$tabttc[$obj->rowid][$compta_soc] += $total_ttc;
@@ -369,7 +369,7 @@ if ($result) {
 				$tablocaltax1[$obj->rowid][$compta_localtax1] += $obj->total_localtax1;
 				$tablocaltax2[$obj->rowid][$compta_localtax2] += $obj->total_localtax2;
 			} else {
-				$tabtva[$obj->rowid][$compta_tva] += $obj->total_tva * $situation_ratio * (1 - $prorata_rate);
+				$tabtva[$obj->rowid][$compta_tva] += $obj->total_tva * $situation_ratio; // VAT manage later below
 				$tablocaltax1[$obj->rowid][$compta_localtax1] += $obj->total_localtax1 * $situation_ratio;
 				$tablocaltax2[$obj->rowid][$compta_localtax2] += $obj->total_localtax2 * $situation_ratio;
 			}
@@ -456,9 +456,26 @@ if ($result) {
 	dol_print_error($db);
 }
 
-
 $errorforinvoice = array();
 
+// TVA prorata - A AMELIORER SUR REPERAGE DES COMPTES 
+$objecttmp=New facture($db);
+$to_tva = array( &$tabtva, &$tabttc);
+foreach ($to_tva as &$tab) {
+     foreach ($tab as $invoice => $accounts) {
+        $objecttmp->fetch($invoice);
+        $objecttmp->fetch_optionals();
+        $tvaprorata =$objecttmp->tvaOnProrata() ;
+        $totaltva=0;
+    	foreach ($accounts as $label => $value) {
+            if (preg_match("/4457/", $label)) $totaltva += $value ;
+        }
+		foreach ($accounts as $label => $value) {
+            if (preg_match("/4457/", $label)) { if ($totaltva <> 0 ) { $tab[$invoice][$label] -= $tab[$invoice][$label] / $totaltva * $tvaprorata; } else { $tab[$invoice][$label] -= $tvaprorata ;}}
+            if (preg_match("/411/", $label)) $tab[$invoice][$label] -= $tvaprorata ;
+        }
+    }
+}
 // Round prorata and TVA to cents
 if (getDolGlobalString('ROUND_IN_ACCOUNTING')) {
 	$to_round = array(&$tabprorata, &$tabtva, &$tabht, &$tabttc);
