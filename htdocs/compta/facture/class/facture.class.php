@@ -2680,7 +2680,7 @@ class Facture extends CommonInvoice
 
 		// Loop on all lines
 		foreach ($this->lines as $line) {
-			if ($line->special_code == 10050172 || $line->special_code != 10050171) {
+			if ($line->special_code == 10050172 || $line->special_code == 10050171) {
 				$result[] = $line;
 			}
 		}
