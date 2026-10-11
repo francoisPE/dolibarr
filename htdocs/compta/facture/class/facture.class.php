@@ -2636,8 +2636,6 @@ class Facture extends CommonInvoice
 	public function tvaOnProrata()
 	{
 		global $conf;
-       public function tvaOnProrata()
-        {
         $this->fetch_lines();
         for ($i=0; $i < count($this->lines); $i++) {
              if ((!class_exists('TSubtotal') || !TSubtotal::isModSubtotalLine($this->lines[$i])) && $this->lines[$i]->special_code != 10050171 ) {
