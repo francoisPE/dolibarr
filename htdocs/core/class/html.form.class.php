@@ -3171,7 +3171,11 @@ class Form
 			//ASC OR DESC order
 			(getDolGlobalInt('PRODUCT_SORT_BY_CATEGORY') == 1) ? $sql .= "ASC" : $sql .= "DESC";
 		} else {
-			$sql .= $this->db->order("p.ref");
+                if (getDolGlobalString('PRODUCT_SORT_BY_REFPRODUCTASC')) {
+                        $sql .= " ORDER BY p.ref ASC";
+                } else {
+                        $sql .= $this->db->order("p.ref");
+                }
 		}
 
 		$sql .= $this->db->plimit($limit, 0);
@@ -3830,6 +3834,11 @@ class Form
 				$sql .= " OR pfp.barcode LIKE '" . $this->db->escape($prefix . $filterkey) . "%'";
 			}
 			$sql .= ')';
+		}
+ 		if (getDolGlobalString('PRODUCT_SORT_BY_REFPRODUCTASC')) {
+               $sql .= " ORDER BY p.ref ASC";
+        } else {
+               $sql .= " ORDER BY pfp.ref_fourn DESC, pfp.quantity ASC" ;
 		}
 		$sql .= " ORDER BY pfp.ref_fourn DESC, pfp.quantity ASC";
 		$sql .= $this->db->plimit($limit, 0);
